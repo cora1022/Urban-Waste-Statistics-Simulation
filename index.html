@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>도시 폐기물 비교 시뮬레이션</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="global-controls">
+        <button id="btn-generate-all">🚀 양쪽 모두 폐기물 발생</button>
+        <button id="btn-reset-all" class="secondary-btn">🏙️ 양쪽 도시 재구성</button>
+    </div>
+
+    <!-- 비교 바 -->
+    <div id="comparison-container">
+        <div class="comparison-bar">
+            <div id="bar-left" class="bar-segment left" style="width: 50%">도시 A (50%)</div>
+            <div id="bar-right" class="bar-segment right" style="width: 50%">도시 B (50%)</div>
+        </div>
+        <div class="comparison-label">폐기물 발생량 상대 비중</div>
+    </div>
+
+    <div id="simulation-wrapper">
+        <!-- 왼쪽 도시 -->
+        <div id="city-left" class="city-container">
+            <header class="city-header">
+                <div class="city-title">
+                    <span class="city-label">도시 A</span>
+                    <button class="btn-settings icon-btn" data-city="left">⚙️ 설정</button>
+                </div>
+                <div class="stats">
+                    <div class="stat-box">
+                        <span class="label">건물</span>
+                        <span class="value total-buildings">0</span>동
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">거주 인구</span>
+                        <span class="value total-res-pop">0</span>명
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">유동 인구</span>
+                        <span class="value total-float-pop">0</span>명
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">폐기물</span>
+                        <span class="value total-waste">0</span>kg
+                    </div>
+                </div>
+            </header>
+            <canvas class="simulation-canvas"></canvas>
+        </div>
+
+        <!-- 오른쪽 도시 -->
+        <div id="city-right" class="city-container">
+            <header class="city-header">
+                <div class="city-title">
+                    <span class="city-label">도시 B</span>
+                    <button class="btn-settings icon-btn" data-city="right">⚙️ 설정</button>
+                </div>
+                <div class="stats">
+                    <div class="stat-box">
+                        <span class="label">건물</span>
+                        <span class="value total-buildings">0</span>동
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">거주 인구</span>
+                        <span class="value total-res-pop">0</span>명
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">유동 인구</span>
+                        <span class="value total-float-pop">0</span>명
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">폐기물</span>
+                        <span class="value total-waste">0</span>kg
+                    </div>
+                </div>
+            </header>
+            <canvas class="simulation-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- 설정 모달 (공용) -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">도시 설정</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <label>건물 시각화</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="show-types">
+                        <label for="show-types">건물 유형 표시 (색상/아이콘)</label>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label>시뮬레이션 파라미터</label>
+                    <div class="range-group">
+                        <label>차량 생성 빈도</label>
+                        <input type="range" id="spawn-rate" min="0" max="100" value="50">
+                    </div>
+                    <div class="range-group">
+                        <label>폐기물 발생 배율</label>
+                        <input type="range" id="waste-scale" min="1" max="200" value="100">
+                    </div>
+                    <div class="range-group">
+                        <label>도로 구조</label>
+                        <select id="road-layout" class="styled-select">
+                            <option value="0">기본 (대각선 교차)</option>
+                            <option value="1">그리드 (격자형)</option>
+                            <option value="2">순환도로</option>
+                            <option value="3">수평 평행선</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <div class="preset-header">
+                        <label>건물 유형 비율 (가중치)</label>
+                        <select id="ratio-preset" class="styled-select preset-select">
+                            <option value="custom">사용자 지정</option>
+                            <option value="residential">주거 지역</option>
+                            <option value="commercial">상업 지역</option>
+                            <option value="industrial">산업/업무 단지</option>
+                            <option value="balanced">균형</option>
+                        </select>
+                    </div>
+                    <div id="ratio-controls" class="ratio-grid">
+                        <!-- JS에서 동적 생성됨 -->
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label>데이터 및 제어</label>
+                    <button id="btn-download-csv" class="secondary-btn">📊 통계 CSV 다운로드</button>
+                    <button id="btn-reset-city">🏙️ 도시 재구성</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tooltip" class="tooltip"></div>
+    <script src="script.js"></script>
+</body>
+</html>
