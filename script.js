@@ -37,17 +37,6 @@ const BUILDING_TYPES = {
     GOVERNMENT: { label: '공공 기관', color: '#66b2ff', volatility: 0.3, workerDensity: 1.5, visitorDensity: 8.0, workerWasteRate: 0.25, visitorWasteRate: 0.05, icon: '🏛️' }
 };
 
-const EVENTS = [
-    { name: '지역 축제 개최', effect: 1.8, duration: 1000, color: '#ff6b9d', target: 'COMMERCIAL_FOOD' },
-    { name: '대청소 날', effect: 2.5, duration: 800, color: '#7ad3f0', target: 'ALL' },
-    { name: '산업 파업', effect: 0.2, duration: 1200, color: '#9d66ff', target: 'INDUSTRIAL' },
-    { name: '명절 연휴', effect: 1.5, duration: 1500, color: '#ffcf56', target: 'RESIDENTIAL' },
-    { name: '한파 주의보', effect: 0.7, duration: 1000, color: '#5c7aff', target: 'ALL' },
-    { name: '대규모 세일 행사', effect: 2.0, duration: 1000, color: '#ffcf56', target: 'COMMERCIAL_RETAIL' },
-    { name: '신규 아파트 입주', effect: 3.0, duration: 800, color: '#ffd891', target: 'CONSTRUCTION' },
-    { name: '전염병 주의보', effect: 1.5, duration: 1200, color: '#ff7676', target: 'MEDICAL' }
-];
-
 const COLORS = {
     BG: '#05050a',
     ROAD: '#12121c',
@@ -83,14 +72,8 @@ class Building {
 
     randomize() {
         const variation = Math.random() * this.type.volatility;
-        let eventEffect = 1.0;
-        if (this.city.currentEvent) {
-            if (this.city.currentEvent.target === 'ALL' || this.city.currentEvent.target === this.typeKey) {
-                eventEffect = this.city.currentEvent.effect;
-            }
-        }
         const baseRate = 0.5; // Default base utilization
-        this.waste = this.capacity * (baseRate + variation) * this.city.config.wasteScale * eventEffect;
+        this.waste = this.capacity * (baseRate + variation) * this.city.config.wasteScale;
         if (this.waste > this.capacity) this.waste = this.capacity;
         return this.waste;
     }
@@ -185,9 +168,6 @@ class CitySimulation {
         this.totalResPopulation = 0;
         this.totalFloatPopulation = 0;
         
-        this.currentEvent = null;
-        this.eventTimer = 0;
-        
         this.config = {
             roadWidth: 45,
             targetBuildings: 60,
@@ -229,6 +209,14 @@ class CitySimulation {
         this.vehicles = [];
         const w = this.canvas.width;
         const h = this.canvas.height;
+
+        // 헤더 통계에 툴팁 추가
+        this.totalResPopDisplay.parentElement.title = "계산식: ∑(건물 면적 × 유형별 인구 밀도 × 0.02)\n* 인구 밀도는 건물 유형마다 상이함";
+        this.totalFloatPopDisplay.parentElement.title = "계산식: ∑(건물 면적 × 유형별 방문 밀도 × 0.02)\n* 방문 밀도는 건물 유형마다 상이함";
+        this.totalWasteDisplay.parentElement.title = "계산식: ∑(건물별 실시간 발생량)\n* 발생량 = 용량 × (기본 가동률 + 변동치) × 발생 배율";
+        this.totalResPopDisplay.parentElement.style.cursor = 'help';
+        this.totalFloatPopDisplay.parentElement.style.cursor = 'help';
+        this.totalWasteDisplay.parentElement.style.cursor = 'help';
 
         const layout = this.config.roadLayout || 0;
         
@@ -310,6 +298,108 @@ class CitySimulation {
         this.totalResPopDisplay.innerText = this.totalResPopulation.toLocaleString();
         this.totalFloatPopDisplay.innerText = this.totalFloatPopulation.toLocaleString();
         this.totalBldDisplay.innerText = this.buildings.length;
+
+        this.updateStatsTooltips();
+    }
+
+    updateStatsTooltips() {
+        const stats = {};
+        Object.keys(BUILDING_TYPES).forEach(type => {
+            stats[type] = { count: 0, resPop: 0, floatPop: 0, resWaste: 0, floatWaste: 0, totalWaste: 0 };
+        });
+
+        this.buildings.forEach(b => {
+            const s = stats[b.typeKey];
+            s.count++;
+            s.resPop += b.resPopulation || 0;
+            s.floatPop += b.floatPopulation || 0;
+            
+            const workerRate = b.type.workerWasteRate || 0;
+            const visitorRate = b.type.visitorWasteRate || 0;
+            const totalRate = workerRate + visitorRate;
+            
+            if (totalRate > 0) {
+                s.resWaste += b.waste * (workerRate / totalRate);
+                s.floatWaste += b.waste * (visitorRate / totalRate);
+            }
+            s.totalWaste += b.waste;
+        });
+
+        const createTooltipHTML = (title, items) => {
+            let html = `<div class="tooltip-title">${title}</div><div class="tooltip-info">`;
+            items.forEach(item => {
+                html += `<div class="tooltip-row"><span class="tooltip-label">${item.label}</span><span class="tooltip-value">${item.value}</span></div>`;
+            });
+            html += `</div>`;
+            return html;
+        };
+
+        const setupHeaderTooltip = (displayEl, getTitle, getItems) => {
+            const box = displayEl.closest('.stat-box');
+            if (!box) return;
+            
+            // 브라우저 기본 툴팁 제거 및 안정적인 타겟 설정
+            box.title = "";
+            box.style.cursor = 'help';
+            
+            box.onmouseenter = () => {
+                const items = getItems();
+                if (items.length === 0) return;
+                tooltip.style.display = 'block';
+                tooltip.innerHTML = createTooltipHTML(getTitle(), items);
+            };
+            box.onmousemove = (e) => {
+                tooltip.style.left = (e.clientX + 15) + 'px';
+                tooltip.style.top = (e.clientY + 15) + 'px';
+            };
+            box.onmouseleave = () => {
+                tooltip.style.display = 'none';
+            };
+        };
+
+        // 건물 수 툴팁
+        setupHeaderTooltip(this.totalBldDisplay, () => "🏙️ 건물 유형별 통계", () => {
+            return Object.keys(BUILDING_TYPES)
+                .map(k => ({
+                    label: BUILDING_TYPES[k].label,
+                    value: `${stats[k].count}동`,
+                    show: stats[k].count > 0
+                }))
+                .filter(i => i.show);
+        });
+
+        // 거주 인구 툴팁
+        setupHeaderTooltip(this.totalResPopDisplay, () => "🏠 거주 인구 상세", () => {
+            return Object.keys(BUILDING_TYPES)
+                .map(k => ({
+                    label: BUILDING_TYPES[k].label,
+                    value: `${stats[k].resPop.toLocaleString()}명 (${Math.floor(stats[k].resWaste).toLocaleString()}kg)`,
+                    show: stats[k].resPop > 0 || stats[k].resWaste > 0
+                }))
+                .filter(i => i.show);
+        });
+
+        // 유동 인구 툴팁
+        setupHeaderTooltip(this.totalFloatPopDisplay, () => "🏃 유동 인구 상세", () => {
+            return Object.keys(BUILDING_TYPES)
+                .map(k => ({
+                    label: BUILDING_TYPES[k].label,
+                    value: `${stats[k].floatPop.toLocaleString()}명 (${Math.floor(stats[k].floatWaste).toLocaleString()}kg)`,
+                    show: stats[k].floatPop > 0 || stats[k].floatWaste > 0
+                }))
+                .filter(i => i.show);
+        });
+
+        // 폐기물 툴팁
+        setupHeaderTooltip(this.totalWasteDisplay, () => "♻️ 유형별 폐기물 배출량", () => {
+            return Object.keys(BUILDING_TYPES)
+                .map(k => ({
+                    label: BUILDING_TYPES[k].label,
+                    value: `${Math.floor(stats[k].totalWaste).toLocaleString()}kg`,
+                    show: stats[k].totalWaste > 0
+                }))
+                .filter(i => i.show);
+        });
     }
 
     distToSegment(p, v, w) {
@@ -324,19 +414,12 @@ class CitySimulation {
         this.totalCityWaste = 0;
         this.buildings.forEach(b => this.totalCityWaste += b.randomize());
         this.totalWasteDisplay.innerText = Math.floor(this.totalCityWaste).toLocaleString();
+        this.updateStatsTooltips();
     }
 
     animate() {
         this.ctx.fillStyle = COLORS.BG;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        if (this.eventTimer > 0) {
-            this.eventTimer--;
-            if (this.eventTimer <= 0) this.currentEvent = null;
-        } else if (Math.random() < 0.001) {
-            this.currentEvent = EVENTS[Math.floor(Math.random() * EVENTS.length)];
-            this.eventTimer = this.currentEvent.duration;
-        }
 
         this.ctx.strokeStyle = COLORS.ROAD;
         this.ctx.lineWidth = this.config.roadWidth;
@@ -355,17 +438,6 @@ class CitySimulation {
         }
         this.vehicles = this.vehicles.filter(v => v.alive);
         this.vehicles.forEach(v => { v.update(); v.draw(this.ctx); });
-
-        if (this.currentEvent) {
-            this.ctx.save();
-            this.ctx.fillStyle = this.currentEvent.color + '44';
-            this.ctx.fillRect(0, 0, this.canvas.width, 30);
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = 'bold 12px Segoe UI';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(`📢 ${this.currentEvent.name} (x${this.currentEvent.effect})`, this.canvas.width / 2, 20);
-            this.ctx.restore();
-        }
 
         requestAnimationFrame(() => this.animate());
     }
@@ -477,8 +549,15 @@ function updateRatioUI() {
         const type = BUILDING_TYPES[key];
         const item = document.createElement('div');
         item.className = 'ratio-item';
+        
+        const statsInfo = `[${type.label} 통계]\n` +
+            `• 거주 인구 밀도: ${type.workerDensity}\n` +
+            `• 유동 인구 밀도: ${type.visitorDensity}\n` +
+            `• 거주인 폐기물률: ${type.workerWasteRate}kg/인\n` +
+            `• 방문객 폐기물률: ${type.visitorWasteRate}kg/인`;
+
         item.innerHTML = `
-            <label>${type.icon} ${type.label}</label>
+            <label title="${statsInfo}" style="cursor: help;">${type.icon} ${type.label} ⓘ</label>
             <input type="range" min="0" max="100" value="${activeCity.config.typeWeights[key]}" data-type="${key}">
         `;
         item.querySelector('input').oninput = (e) => {
@@ -537,11 +616,28 @@ document.getElementById('btn-download-csv').onclick = () => {
             tooltip.style.display = 'block';
             tooltip.style.left = (e.clientX + 15) + 'px';
             tooltip.style.top = (e.clientY + 15) + 'px';
+
+            const workerRate = hovered.type.workerWasteRate || 0;
+            const visitorRate = hovered.type.visitorWasteRate || 0;
+            const totalRate = workerRate + visitorRate;
+            
+            let resWaste = 0;
+            let floatWaste = 0;
+            if (totalRate > 0) {
+                resWaste = hovered.waste * (workerRate / totalRate);
+                floatWaste = hovered.waste * (visitorRate / totalRate);
+            }
+
             tooltip.innerHTML = `
                 <div class="tooltip-title"><span>${hovered.type.icon}</span><span>${hovered.name}</span></div>
                 <div class="tooltip-info">
                     <div class="tooltip-row"><span class="tooltip-label">유형</span><span class="tooltip-value">${hovered.type.label}</span></div>
-                    <div class="tooltip-row"><span class="tooltip-label">폐기물</span><span class="tooltip-value">${Math.floor(hovered.waste).toLocaleString()} kg</span></div>
+                    <div class="tooltip-row"><span class="tooltip-label">인구수</span><span class="tooltip-value">${hovered.resPopulation.toLocaleString()}명</span></div>
+                    <div class="tooltip-row"><span class="tooltip-label">유동인구</span><span class="tooltip-value">${hovered.floatPopulation.toLocaleString()}명</span></div>
+                    <div class="tooltip-divider" style="height: 1px; background: rgba(255,255,255,0.1); margin: 5px 0;"></div>
+                    <div class="tooltip-row"><span class="tooltip-label">인구수 폐기물</span><span class="tooltip-value">${Math.floor(resWaste).toLocaleString()} kg</span></div>
+                    <div class="tooltip-row"><span class="tooltip-label">유동인구 폐기물</span><span class="tooltip-value">${Math.floor(floatWaste).toLocaleString()} kg</span></div>
+                    <div class="tooltip-row"><span class="tooltip-label">총 폐기물</span><span class="tooltip-value">${Math.floor(hovered.waste).toLocaleString()} kg</span></div>
                     <div class="tooltip-row"><span class="tooltip-label">포화도</span><span class="tooltip-value">${((hovered.waste / hovered.capacity) * 100).toFixed(1)}%</span></div>
                 </div>
             `;
