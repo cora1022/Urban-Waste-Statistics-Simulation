@@ -4,11 +4,15 @@
 
 // --- 데이터 세트 ---
 const RATIO_PRESETS = {
-    residential: { RESIDENTIAL: 70, COMMERCIAL_FOOD: 10, COMMERCIAL_RETAIL: 10, SCHOOL: 5, INDUSTRIAL: 0, MEDICAL: 5, OFFICE: 0, PARK: 20, CONSTRUCTION: 5, GOVERNMENT: 5 },
-    commercial: { RESIDENTIAL: 10, COMMERCIAL_FOOD: 40, COMMERCIAL_RETAIL: 40, SCHOOL: 0, INDUSTRIAL: 5, MEDICAL: 5, OFFICE: 10, PARK: 5, CONSTRUCTION: 10, GOVERNMENT: 5 },
-    industrial: { RESIDENTIAL: 5, COMMERCIAL_FOOD: 5, COMMERCIAL_RETAIL: 5, SCHOOL: 0, INDUSTRIAL: 50, MEDICAL: 0, OFFICE: 40, PARK: 0, CONSTRUCTION: 10, GOVERNMENT: 5 },
-    balanced: { RESIDENTIAL: 20, COMMERCIAL_FOOD: 20, COMMERCIAL_RETAIL: 20, SCHOOL: 10, INDUSTRIAL: 10, MEDICAL: 10, OFFICE: 20, PARK: 15, CONSTRUCTION: 5, GOVERNMENT: 10 }
+    villa: { RESIDENTIAL: 82, COMMERCIAL_FOOD: 6, COMMERCIAL_RETAIL: 8, SCHOOL: 5, INDUSTRIAL: 0, MEDICAL: 2, OFFICE: 1, PARK: 8, CONSTRUCTION: 2, GOVERNMENT: 1 },
+    apartment: { RESIDENTIAL: 88, COMMERCIAL_FOOD: 5, COMMERCIAL_RETAIL: 8, SCHOOL: 6, INDUSTRIAL: 0, MEDICAL: 3, OFFICE: 2, PARK: 10, CONSTRUCTION: 1, GOVERNMENT: 2 },
+    oldDowntown: { RESIDENTIAL: 42, COMMERCIAL_FOOD: 22, COMMERCIAL_RETAIL: 24, SCHOOL: 4, INDUSTRIAL: 3, MEDICAL: 7, OFFICE: 10, PARK: 3, CONSTRUCTION: 4, GOVERNMENT: 5 },
+    officeDistrict: { RESIDENTIAL: 10, COMMERCIAL_FOOD: 18, COMMERCIAL_RETAIL: 14, SCHOOL: 1, INDUSTRIAL: 2, MEDICAL: 5, OFFICE: 70, PARK: 4, CONSTRUCTION: 5, GOVERNMENT: 8 },
+    factoryDistrict: { RESIDENTIAL: 6, COMMERCIAL_FOOD: 5, COMMERCIAL_RETAIL: 5, SCHOOL: 0, INDUSTRIAL: 80, MEDICAL: 1, OFFICE: 18, PARK: 1, CONSTRUCTION: 8, GOVERNMENT: 2 },
+    mixedCity: { RESIDENTIAL: 58, COMMERCIAL_FOOD: 12, COMMERCIAL_RETAIL: 14, SCHOOL: 5, INDUSTRIAL: 8, MEDICAL: 4, OFFICE: 8, PARK: 6, CONSTRUCTION: 3, GOVERNMENT: 4 }
 };
+
+const ROAD_LAYOUT_COUNT = 7;
 
 const NAME_PREFIXES = ['푸른', '빛나는', '오래된', '중앙', '강변', '숲속', '행복한', '스마트', '미래', '평화'];
 const NAME_SUFFIXES = {
@@ -25,29 +29,42 @@ const NAME_SUFFIXES = {
 };
 
 const WASTE_RATES = {
-    RESIDENTIAL: { standing: 0.95, visitor: 0.03 },
-    COMMERCIAL_FOOD: { standing: 1.20, visitor: 0.09 },
-    COMMERCIAL_RETAIL: { standing: 0.60, visitor: 0.04 },
-    SCHOOL: { standing: 0.32, visitor: 0.04 },
-    INDUSTRIAL: { standing: 0.38, visitor: 0.02 },
-    MEDICAL: { standing: 0.55, visitor: 0.05 },
-    OFFICE: { standing: 0.42, visitor: 0.03 },
-    PARK: { standing: 0.04, visitor: 0.02 },
-    CONSTRUCTION: { standing: 0.45, visitor: 0.03 },
-    GOVERNMENT: { standing: 0.38, visitor: 0.03 }
+    RESIDENTIAL: { standing: 0.99, visitor: 0.031 },
+    COMMERCIAL_FOOD: { standing: 1.25, visitor: 0.094 },
+    COMMERCIAL_RETAIL: { standing: 0.62, visitor: 0.042 },
+    SCHOOL: { standing: 0.33, visitor: 0.042 },
+    INDUSTRIAL: { standing: 0.40, visitor: 0.021 },
+    MEDICAL: { standing: 0.57, visitor: 0.052 },
+    OFFICE: { standing: 0.44, visitor: 0.031 },
+    PARK: { standing: 0.04, visitor: 0.021 },
+    CONSTRUCTION: { standing: 0.47, visitor: 0.031 },
+    GOVERNMENT: { standing: 0.40, visitor: 0.031 }
 };
 
 const BUILDING_TYPES = {
-    RESIDENTIAL: { label: '주거 시설', color: '#5c7aff', volatility: 0.2, workerDensity: 8.5, visitorDensity: 0.5, workerWasteRate: WASTE_RATES.RESIDENTIAL.standing, visitorWasteRate: WASTE_RATES.RESIDENTIAL.visitor, icon: '🏠', wasteShares: { foodWaste: 0.34, paper: 0.077, vinyl: 0.075, plastic: 0.07, glass: 0.035, metal: 0.025, styrofoam: 0.03, sanitary: 0.055, mixedCombustible: 0.205, mixedNoncombustible: 0.05, textile: 0.028, bulkyFurniture: 0.007, bulkyAppliance: 0.003 } },
-    COMMERCIAL_FOOD: { label: '음식점/카페', color: '#ff6b9d', volatility: 0.65, workerDensity: 1.0, visitorDensity: 12.0, workerWasteRate: WASTE_RATES.COMMERCIAL_FOOD.standing, visitorWasteRate: WASTE_RATES.COMMERCIAL_FOOD.visitor, icon: '🍕', wasteShares: { foodWaste: 0.46, paper: 0.07, vinyl: 0.08, plastic: 0.055, glass: 0.03, metal: 0.02, styrofoam: 0.035, sanitary: 0.03, mixedCombustible: 0.16, mixedNoncombustible: 0.05, bulkyFurniture: 0.006, bulkyAppliance: 0.004 }, specialWastePerWorker: 0.12, specialWasteShares: { businessWaste: 1 } },
-    COMMERCIAL_RETAIL: { label: '상점/마트', color: '#ffcf56', volatility: 0.45, workerDensity: 0.8, visitorDensity: 10.0, workerWasteRate: WASTE_RATES.COMMERCIAL_RETAIL.standing, visitorWasteRate: WASTE_RATES.COMMERCIAL_RETAIL.visitor, icon: '🛍️', wasteShares: { foodWaste: 0.11, paper: 0.17, vinyl: 0.16, plastic: 0.12, glass: 0.035, metal: 0.04, styrofoam: 0.055, sanitary: 0.025, mixedCombustible: 0.24, mixedNoncombustible: 0.025, bulkyFurniture: 0.014, bulkyAppliance: 0.006 }, specialWastePerWorker: 0.08, specialWasteShares: { businessWaste: 1 } },
-    SCHOOL: { label: '학교/교육시설', color: '#7ad3f0', volatility: 0.3, workerDensity: 0.5, visitorDensity: 5.0, workerWasteRate: WASTE_RATES.SCHOOL.standing, visitorWasteRate: WASTE_RATES.SCHOOL.visitor, icon: '🏫', wasteShares: { foodWaste: 0.35, paper: 0.14, vinyl: 0.06, plastic: 0.05, glass: 0.01, metal: 0.02, styrofoam: 0.015, sanitary: 0.05, mixedCombustible: 0.24, mixedNoncombustible: 0.055, bulkyFurniture: 0.007, bulkyAppliance: 0.003 } },
-    INDUSTRIAL: { label: '산업/공장', color: '#9d66ff', volatility: 0.75, workerDensity: 3.0, visitorDensity: 0.5, workerWasteRate: WASTE_RATES.INDUSTRIAL.standing, visitorWasteRate: WASTE_RATES.INDUSTRIAL.visitor, icon: '🏭', wasteShares: { foodWaste: 0.10, paper: 0.09, vinyl: 0.08, plastic: 0.09, glass: 0.01, metal: 0.07, styrofoam: 0.02, sanitary: 0.03, mixedCombustible: 0.34, mixedNoncombustible: 0.17 }, specialWastePerWorker: 0.35, specialWasteShares: { businessWaste: 0.9, constructionDebris: 0.1 } },
-    MEDICAL: { label: '의료/병원', color: '#ff7676', volatility: 0.35, workerDensity: 1.5, visitorDensity: 6.0, workerWasteRate: WASTE_RATES.MEDICAL.standing, visitorWasteRate: WASTE_RATES.MEDICAL.visitor, icon: '🏥', wasteShares: { foodWaste: 0.16, paper: 0.08, vinyl: 0.07, plastic: 0.055, glass: 0.02, metal: 0.015, styrofoam: 0.01, sanitary: 0.09, mixedCombustible: 0.40, mixedNoncombustible: 0.10 }, specialWastePerWorker: 0.22, specialWastePerVisitor: 0.01, specialWasteShares: { medicalWaste: 0.78, businessWaste: 0.22 } },
-    OFFICE: { label: '업무/오피스', color: '#b2b0ff', volatility: 0.35, workerDensity: 6.0, visitorDensity: 2.0, workerWasteRate: WASTE_RATES.OFFICE.standing, visitorWasteRate: WASTE_RATES.OFFICE.visitor, icon: '🏢', wasteShares: { foodWaste: 0.26, paper: 0.18, vinyl: 0.06, plastic: 0.06, glass: 0.02, metal: 0.03, styrofoam: 0.01, sanitary: 0.04, mixedCombustible: 0.27, mixedNoncombustible: 0.05, bulkyFurniture: 0.014, bulkyAppliance: 0.006 }, specialWastePerWorker: 0.03, specialWasteShares: { businessWaste: 1 } },
-    PARK: { label: '공원/녹지', color: '#56d8b1', volatility: 0.25, workerDensity: 0.1, visitorDensity: 4.0, workerWasteRate: WASTE_RATES.PARK.standing, visitorWasteRate: WASTE_RATES.PARK.visitor, icon: '🌳', wasteShares: { foodWaste: 0.30, paper: 0.10, vinyl: 0.09, plastic: 0.10, glass: 0.04, metal: 0.035, styrofoam: 0.02, sanitary: 0.04, mixedCombustible: 0.21, mixedNoncombustible: 0.065 } },
-    CONSTRUCTION: { label: '공사 현장', color: '#ffd891', volatility: 1.0, workerDensity: 2.0, visitorDensity: 0.2, workerWasteRate: WASTE_RATES.CONSTRUCTION.standing, visitorWasteRate: WASTE_RATES.CONSTRUCTION.visitor, icon: '🚧', wasteShares: { foodWaste: 0.10, paper: 0.05, vinyl: 0.05, plastic: 0.04, glass: 0.01, metal: 0.04, styrofoam: 0.02, sanitary: 0.03, mixedCombustible: 0.38, mixedNoncombustible: 0.28 }, specialWasteAreaRate: 0.028, specialWasteShares: { constructionDebris: 0.86, metal: 0.06, plastic: 0.03, mixedNoncombustible: 0.05 } },
-    GOVERNMENT: { label: '공공 기관', color: '#66b2ff', volatility: 0.3, workerDensity: 1.5, visitorDensity: 8.0, workerWasteRate: WASTE_RATES.GOVERNMENT.standing, visitorWasteRate: WASTE_RATES.GOVERNMENT.visitor, icon: '🏛️', wasteShares: { foodWaste: 0.24, paper: 0.19, vinyl: 0.055, plastic: 0.055, glass: 0.02, metal: 0.03, styrofoam: 0.01, sanitary: 0.045, mixedCombustible: 0.27, mixedNoncombustible: 0.065, bulkyFurniture: 0.01, bulkyAppliance: 0.01 }, specialWastePerWorker: 0.03, specialWasteShares: { businessWaste: 1 } }
+    RESIDENTIAL: { label: '주거 시설', color: 'rgba(54, 73, 145, 0.72)', volatility: 0.2, workerDensity: 8.5, visitorDensity: 0.5, workerWasteRate: WASTE_RATES.RESIDENTIAL.standing, visitorWasteRate: WASTE_RATES.RESIDENTIAL.visitor, icon: '🏠', wasteShares: { foodWaste: 0.34, paper: 0.077, vinyl: 0.075, plastic: 0.07, glass: 0.035, metal: 0.025, styrofoam: 0.03, sanitary: 0.055, mixedCombustible: 0.205, mixedNoncombustible: 0.05, textile: 0.028, bulkyFurniture: 0.007, bulkyAppliance: 0.003 } },
+    COMMERCIAL_FOOD: { label: '음식점/카페', color: 'rgba(139, 54, 93, 0.72)', volatility: 0.65, workerDensity: 1.0, visitorDensity: 12.0, workerWasteRate: WASTE_RATES.COMMERCIAL_FOOD.standing, visitorWasteRate: WASTE_RATES.COMMERCIAL_FOOD.visitor, icon: '🍕', wasteShares: { foodWaste: 0.46, paper: 0.07, vinyl: 0.08, plastic: 0.055, glass: 0.03, metal: 0.02, styrofoam: 0.035, sanitary: 0.03, mixedCombustible: 0.16, mixedNoncombustible: 0.05, bulkyFurniture: 0.006, bulkyAppliance: 0.004 }, specialWastePerWorker: 0.12, specialWasteShares: { businessWaste: 1 } },
+    COMMERCIAL_RETAIL: { label: '상점/마트', color: 'rgba(145, 111, 42, 0.72)', volatility: 0.45, workerDensity: 0.8, visitorDensity: 10.0, workerWasteRate: WASTE_RATES.COMMERCIAL_RETAIL.standing, visitorWasteRate: WASTE_RATES.COMMERCIAL_RETAIL.visitor, icon: '🛍️', wasteShares: { foodWaste: 0.11, paper: 0.17, vinyl: 0.16, plastic: 0.12, glass: 0.035, metal: 0.04, styrofoam: 0.055, sanitary: 0.025, mixedCombustible: 0.24, mixedNoncombustible: 0.025, bulkyFurniture: 0.014, bulkyAppliance: 0.006 }, specialWastePerWorker: 0.08, specialWasteShares: { businessWaste: 1 } },
+    SCHOOL: { label: '학교/교육시설', color: 'rgba(56, 112, 128, 0.72)', volatility: 0.3, workerDensity: 0.5, visitorDensity: 5.0, workerWasteRate: WASTE_RATES.SCHOOL.standing, visitorWasteRate: WASTE_RATES.SCHOOL.visitor, icon: '🏫', wasteShares: { foodWaste: 0.35, paper: 0.14, vinyl: 0.06, plastic: 0.05, glass: 0.01, metal: 0.02, styrofoam: 0.015, sanitary: 0.05, mixedCombustible: 0.24, mixedNoncombustible: 0.055, bulkyFurniture: 0.007, bulkyAppliance: 0.003 } },
+    INDUSTRIAL: { label: '산업/공장', color: 'rgba(88, 61, 139, 0.72)', volatility: 0.75, workerDensity: 3.0, visitorDensity: 0.5, workerWasteRate: WASTE_RATES.INDUSTRIAL.standing, visitorWasteRate: WASTE_RATES.INDUSTRIAL.visitor, icon: '🏭', wasteShares: { foodWaste: 0.10, paper: 0.09, vinyl: 0.08, plastic: 0.09, glass: 0.01, metal: 0.07, styrofoam: 0.02, sanitary: 0.03, mixedCombustible: 0.34, mixedNoncombustible: 0.17 }, specialWastePerWorker: 0.35, specialWasteShares: { businessWaste: 0.9, constructionDebris: 0.1 } },
+    MEDICAL: { label: '의료/병원', color: 'rgba(143, 60, 60, 0.72)', volatility: 0.35, workerDensity: 1.5, visitorDensity: 6.0, workerWasteRate: WASTE_RATES.MEDICAL.standing, visitorWasteRate: WASTE_RATES.MEDICAL.visitor, icon: '🏥', wasteShares: { foodWaste: 0.16, paper: 0.08, vinyl: 0.07, plastic: 0.055, glass: 0.02, metal: 0.015, styrofoam: 0.01, sanitary: 0.09, mixedCombustible: 0.40, mixedNoncombustible: 0.10 }, specialWastePerWorker: 0.22, specialWastePerVisitor: 0.01, specialWasteShares: { medicalWaste: 0.78, businessWaste: 0.22 } },
+    OFFICE: { label: '업무/오피스', color: 'rgba(91, 90, 151, 0.72)', volatility: 0.35, workerDensity: 6.0, visitorDensity: 2.0, workerWasteRate: WASTE_RATES.OFFICE.standing, visitorWasteRate: WASTE_RATES.OFFICE.visitor, icon: '🏢', wasteShares: { foodWaste: 0.26, paper: 0.18, vinyl: 0.06, plastic: 0.06, glass: 0.02, metal: 0.03, styrofoam: 0.01, sanitary: 0.04, mixedCombustible: 0.27, mixedNoncombustible: 0.05, bulkyFurniture: 0.014, bulkyAppliance: 0.006 }, specialWastePerWorker: 0.03, specialWasteShares: { businessWaste: 1 } },
+    PARK: { label: '공원/녹지', color: 'rgba(50, 116, 94, 0.72)', volatility: 0.25, workerDensity: 0.1, visitorDensity: 4.0, workerWasteRate: WASTE_RATES.PARK.standing, visitorWasteRate: WASTE_RATES.PARK.visitor, icon: '🌳', wasteShares: { foodWaste: 0.30, paper: 0.10, vinyl: 0.09, plastic: 0.10, glass: 0.04, metal: 0.035, styrofoam: 0.02, sanitary: 0.04, mixedCombustible: 0.21, mixedNoncombustible: 0.065 } },
+    CONSTRUCTION: { label: '공사 현장', color: 'rgba(143, 112, 58, 0.72)', volatility: 1.0, workerDensity: 2.0, visitorDensity: 0.2, workerWasteRate: WASTE_RATES.CONSTRUCTION.standing, visitorWasteRate: WASTE_RATES.CONSTRUCTION.visitor, icon: '🚧', wasteShares: { foodWaste: 0.10, paper: 0.05, vinyl: 0.05, plastic: 0.04, glass: 0.01, metal: 0.04, styrofoam: 0.02, sanitary: 0.03, mixedCombustible: 0.38, mixedNoncombustible: 0.28 }, specialWasteAreaRate: 0.028, specialWasteShares: { constructionDebris: 0.86, metal: 0.06, plastic: 0.03, mixedNoncombustible: 0.05 } },
+    GOVERNMENT: { label: '공공 기관', color: 'rgba(52, 94, 133, 0.72)', volatility: 0.3, workerDensity: 1.5, visitorDensity: 8.0, workerWasteRate: WASTE_RATES.GOVERNMENT.standing, visitorWasteRate: WASTE_RATES.GOVERNMENT.visitor, icon: '🏛️', wasteShares: { foodWaste: 0.24, paper: 0.19, vinyl: 0.055, plastic: 0.055, glass: 0.02, metal: 0.03, styrofoam: 0.01, sanitary: 0.045, mixedCombustible: 0.27, mixedNoncombustible: 0.065, bulkyFurniture: 0.01, bulkyAppliance: 0.01 }, specialWastePerWorker: 0.03, specialWasteShares: { businessWaste: 1 } }
+};
+
+const LIGHT_BUILDING_TYPE_COLORS = {
+    RESIDENTIAL: '#aebcf2',
+    COMMERCIAL_FOOD: '#f2b4cb',
+    COMMERCIAL_RETAIL: '#efd18a',
+    SCHOOL: '#9ed9e5',
+    INDUSTRIAL: '#c6b5ee',
+    MEDICAL: '#f2b4b4',
+    OFFICE: '#bbbdf2',
+    PARK: '#a8dfc7',
+    CONSTRUCTION: '#efd19c',
+    GOVERNMENT: '#a8c9e8'
 };
 
 const WASTE_STREAMS = {
@@ -80,13 +97,15 @@ const WASTE_CATEGORIES = {
 };
 
 const KOREA_WASTE_BENCHMARK = {
-    municipalPerCapitaKg: 0.9506,
+    municipalPerCapitaKg: 1.2,
+    householdSurveyPerCapitaKg: 0.9506,
+    simulationTargetRangeKgPerResident: [1.1, 1.3],
     categoryShares: {
         standardBag: 330.8 / 950.6,
         food: 310.9 / 950.6,
         recyclable: 308.8 / 950.6
     },
-    source: '환경부 제6차 전국폐기물통계조사(2021~2022)'
+    source: '2023년 전국 폐기물 발생 및 처리현황 1.2kg/일·인, 제6차 전국폐기물통계조사 세부 조성비'
 };
 
 const SIMULATION_BASELINE = {
@@ -94,14 +113,37 @@ const SIMULATION_BASELINE = {
     collectionStorageDays: 1.5,
     minDailyFactor: 0.35,
     maxDailyFactor: 1.85,
-    description: '제6차 전국폐기물통계조사 생활폐기물 0.9506kg/일·인 기준, 업종별 보정계수 적용'
+    populationVariance: 0.025,
+    description: '2023년 전국 생활폐기물 1.2kg/일·인과 제6차 전국폐기물통계조사 세부 조성비 기준 보정'
 };
 
 const COLORS = {
     BG: '#05050a',
     ROAD: '#12121c',
+    ROAD_EDGE: '#0f1118',
+    ROAD_LANE: 'rgba(255, 255, 255, 0.62)',
     BUILDING_DEFAULT: '#1a1a2e',
+    BUILDING_SHADOW: 'rgba(0,0,0,0.5)',
     CAR_TYPES: ['#4361ee', '#f72585', '#7209b7', '#4cc9f0', '#fbbf24']
+};
+
+const THEME_COLORS = {
+    dark: {
+        BG: '#05050a',
+        ROAD: '#12121c',
+        ROAD_EDGE: '#0f1118',
+        ROAD_LANE: 'rgba(255, 255, 255, 0.62)',
+        BUILDING_DEFAULT: '#1a1a2e',
+        BUILDING_SHADOW: 'rgba(0,0,0,0.5)'
+    },
+    light: {
+        BG: '#f7f8fb',
+        ROAD: '#4f535c',
+        ROAD_EDGE: '#4f535c',
+        ROAD_LANE: 'rgba(255, 255, 255, 0.78)',
+        BUILDING_DEFAULT: '#b8bcc5',
+        BUILDING_SHADOW: 'rgba(70, 74, 84, 0.24)'
+    }
 };
 
 function clamp(value, min, max) {
@@ -114,6 +156,64 @@ function formatKg(value) {
 
 function formatPeople(value) {
     return Math.round(value || 0).toLocaleString();
+}
+
+function getBuildingTypeColor(typeKey, type) {
+    if (currentTheme === 'light') {
+        return LIGHT_BUILDING_TYPE_COLORS[typeKey] || COLORS.BUILDING_DEFAULT;
+    }
+    return type.color;
+}
+
+function randomVariance(scale = SIMULATION_BASELINE.populationVariance) {
+    return 1 + (Math.random() * 2 - 1) * scale;
+}
+
+function randomBetween(min, max) {
+    return min + Math.random() * (max - min);
+}
+
+function randomInt(min, max) {
+    return Math.floor(randomBetween(min, max + 1));
+}
+
+function pickRandom(items) {
+    return items[Math.floor(Math.random() * items.length)];
+}
+
+function createRandomTypeWeights(excludedPresetKeys = []) {
+    const availablePresets = Object.keys(RATIO_PRESETS).filter(key => !excludedPresetKeys.includes(key));
+    const presetKey = pickRandom(availablePresets.length > 0 ? availablePresets : Object.keys(RATIO_PRESETS));
+    const source = RATIO_PRESETS[presetKey];
+    const weights = {};
+
+    Object.keys(BUILDING_TYPES).forEach(key => {
+        const base = source[key] || 0;
+        if (base <= 0) {
+            weights[key] = Math.random() < 0.18 ? randomInt(1, 4) : 0;
+            return;
+        }
+        weights[key] = Math.round(clamp(base * randomBetween(0.78, 1.24), 0, 100));
+    });
+
+    return { presetKey, weights };
+}
+
+function applyRandomStartupConfig(city, usedLayouts = [], usedPresetKeys = []) {
+    const randomWeights = createRandomTypeWeights(usedPresetKeys);
+    const availableLayouts = Array.from({ length: ROAD_LAYOUT_COUNT }, (_, index) => index).filter(layout => !usedLayouts.includes(layout));
+    city.config.roadLayout = pickRandom(availableLayouts.length > 0 ? availableLayouts : Array.from({ length: ROAD_LAYOUT_COUNT }, (_, index) => index));
+    city.config.targetBuildings = randomInt(45, 95);
+    city.config.populationScale = Number(randomBetween(0.35, 1.25).toFixed(1));
+    city.config.workerPopulationScale = Number(randomBetween(0.75, 1.35).toFixed(2));
+    city.config.floatPopulationScale = Number(randomBetween(0.75, 1.45).toFixed(2));
+    city.config.trafficScale = Number(randomBetween(0.75, 1.25).toFixed(2));
+    city.config.wasteScale = 1.0;
+    city.config.preset = 'custom';
+    city.config.randomBasePreset = randomWeights.presetKey;
+    city.config.typeWeights = randomWeights.weights;
+    usedLayouts.push(city.config.roadLayout);
+    usedPresetKeys.push(randomWeights.presetKey);
 }
 
 function createWasteBreakdown() {
@@ -346,8 +446,9 @@ class Building {
     draw(ctx) {
         ctx.save();
         ctx.shadowBlur = 10;
-        ctx.shadowColor = 'rgba(0,0,0,0.5)';
-        ctx.fillStyle = this.city.config.showTypes ? this.type.color : COLORS.BUILDING_DEFAULT;
+        ctx.shadowColor = COLORS.BUILDING_SHADOW;
+        const typeColor = getBuildingTypeColor(this.typeKey, this.type);
+        ctx.fillStyle = this.city.config.showTypes ? typeColor : COLORS.BUILDING_DEFAULT;
         ctx.beginPath();
         ctx.roundRect(this.x, this.y, this.w, this.h, 6);
         ctx.fill();
@@ -380,20 +481,32 @@ class Building {
 }
 
 class Vehicle {
-    constructor(path) {
+    constructor(path, roadWidth, reverse = false) {
         this.path = path;
         this.progress = 0;
-        this.speed = (0.0015 + Math.random() * 0.0025);
+        this.reverse = reverse;
+        this.laneOffset = (this.reverse ? -1 : 1) * roadWidth * 0.24;
+        this.speed = (0.0013 + Math.random() * 0.0022);
         this.color = COLORS.CAR_TYPES[Math.floor(Math.random() * COLORS.CAR_TYPES.length)];
-        this.width = 20 + Math.random() * 8;
+        this.width = 16 + Math.random() * 6;
         this.height = this.width * 0.5;
         this.alive = true;
         this.updatePos();
     }
     updatePos() {
-        this.x = this.path.x1 + (this.path.x2 - this.path.x1) * this.progress;
-        this.y = this.path.y1 + (this.path.y2 - this.path.y1) * this.progress;
-        this.angle = Math.atan2(this.path.y2 - this.path.y1, this.path.x2 - this.path.x1);
+        const start = this.reverse ? { x: this.path.x2, y: this.path.y2 } : { x: this.path.x1, y: this.path.y1 };
+        const end = this.reverse ? { x: this.path.x1, y: this.path.y1 } : { x: this.path.x2, y: this.path.y2 };
+        const travelDx = end.x - start.x;
+        const travelDy = end.y - start.y;
+        const roadDx = this.path.x2 - this.path.x1;
+        const roadDy = this.path.y2 - this.path.y1;
+        const roadLen = Math.hypot(roadDx, roadDy) || 1;
+        const nx = -roadDy / roadLen;
+        const ny = roadDx / roadLen;
+
+        this.x = start.x + travelDx * this.progress + nx * this.laneOffset;
+        this.y = start.y + travelDy * this.progress + ny * this.laneOffset;
+        this.angle = Math.atan2(travelDy, travelDx);
     }
     update() {
         this.progress += this.speed;
@@ -410,6 +523,8 @@ class Vehicle {
         ctx.beginPath();
         ctx.roundRect(-this.width/2, -this.height/2, this.width, this.height, 3);
         ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
+        ctx.fillRect(this.width * 0.12, -this.height * 0.24, this.width * 0.22, this.height * 0.48);
         ctx.restore();
     }
 }
@@ -436,27 +551,18 @@ class CitySimulation {
         this.totalVisitorPopulation = 0;
         
         this.config = {
-            roadWidth: 45,
+            roadWidth: 46,
             targetBuildings: 60,
             populationScale: 0.5,
             workerPopulationScale: 1,
             floatPopulationScale: 1,
-            spawnChance: 0.05,
+            trafficScale: 1,
             wasteScale: 1.0,
             showTypes: false,
             roadLayout: 0,
-            preset: 'custom',
+            preset: 'mixedCity',
             typeWeights: {
-                RESIDENTIAL: 50,
-                COMMERCIAL_FOOD: 20,
-                COMMERCIAL_RETAIL: 20,
-                SCHOOL: 10,
-                INDUSTRIAL: 10,
-                MEDICAL: 10,
-                OFFICE: 20,
-                PARK: 15,
-                CONSTRUCTION: 5,
-                GOVERNMENT: 10
+                ...RATIO_PRESETS.mixedCity
             }
         };
     }
@@ -484,7 +590,7 @@ class CitySimulation {
         this.totalResidentPopDisplay.parentElement.title = "계산식: 주거 시설 면적 × 거주 밀도 × 인구 기준 배율\n* 주민등록인구처럼 실제 거주자를 맞추는 값";
         this.totalWorkerPopDisplay.parentElement.title = "계산식: 비주거 시설 면적 × 종사자 밀도 × 인구 기준 배율 × 종사 인구 보정\n* 사업체 종사자/작업자 성격의 인구";
         this.totalVisitorPopDisplay.parentElement.title = "계산식: 건물 면적 × 방문 밀도 × 인구 기준 배율 × 유동 인구 보정\n* 방문자, 통행자, 이용자 성격의 인구";
-        this.totalWasteDisplay.parentElement.title = "계산식: ∑((거주+종사 인구) × 1인 1일 생활폐기물 계수 + 유동 인구 × 방문 배출계수 + 건물 유형별 특수 폐기물)\n* 단위: kg/일, 제6차 전국폐기물통계조사 기준 보정";
+        this.totalWasteDisplay.parentElement.title = "계산식: ∑((거주+종사 인구) × 1인 1일 생활폐기물 계수 + 유동 인구 × 방문 배출계수 + 건물 유형별 특수 폐기물)\n* 단위: kg/일, 2023년 전국 생활폐기물 1.2kg/일·인과 제6차 조성비 기준 보정";
         this.totalResidentPopDisplay.parentElement.style.cursor = 'help';
         this.totalWorkerPopDisplay.parentElement.style.cursor = 'help';
         this.totalVisitorPopDisplay.parentElement.style.cursor = 'help';
@@ -512,6 +618,25 @@ class CitySimulation {
             // 수평 평행선
             this.roadPaths.push({x1: -50, y1: h * 0.3, x2: w + 50, y2: h * 0.3});
             this.roadPaths.push({x1: -50, y1: h * 0.7, x2: w + 50, y2: h * 0.7});
+        } else if (layout === 4) {
+            // 중앙 간선 + 지선
+            this.roadPaths.push({x1: w * 0.5, y1: -50, x2: w * 0.5, y2: h + 50});
+            this.roadPaths.push({x1: -50, y1: h * 0.28, x2: w * 0.5, y2: h * 0.28});
+            this.roadPaths.push({x1: w * 0.5, y1: h * 0.48, x2: w + 50, y2: h * 0.48});
+            this.roadPaths.push({x1: -50, y1: h * 0.72, x2: w * 0.5, y2: h * 0.72});
+        } else if (layout === 5) {
+            // 방사형 교차로
+            this.roadPaths.push({x1: -50, y1: h * 0.5, x2: w + 50, y2: h * 0.5});
+            this.roadPaths.push({x1: w * 0.5, y1: -50, x2: w * 0.5, y2: h + 50});
+            this.roadPaths.push({x1: -50, y1: -20, x2: w + 50, y2: h + 20});
+            this.roadPaths.push({x1: w + 50, y1: -20, x2: -50, y2: h + 20});
+        } else if (layout === 6) {
+            // 외곽 우회 + 내부 연결
+            this.roadPaths.push({x1: w * 0.12, y1: h * 0.18, x2: w * 0.88, y2: h * 0.18});
+            this.roadPaths.push({x1: w * 0.88, y1: h * 0.18, x2: w * 0.88, y2: h * 0.82});
+            this.roadPaths.push({x1: w * 0.88, y1: h * 0.82, x2: w * 0.12, y2: h * 0.82});
+            this.roadPaths.push({x1: w * 0.12, y1: h * 0.82, x2: w * 0.12, y2: h * 0.18});
+            this.roadPaths.push({x1: w * 0.12, y1: h * 0.5, x2: w * 0.88, y2: h * 0.5});
         }
 
         let attempts = 0;
@@ -591,9 +716,9 @@ class CitySimulation {
         if (this.buildings.length === 0) return;
 
         const target = estimatePopulationForConfig(this.config);
-        this.scaleBuildingPopulation('residentPopulation', target.residentPop);
-        this.scaleBuildingPopulation('workerPopulation', target.workerPop);
-        this.scaleBuildingPopulation('visitorPopulation', target.visitorPop);
+        this.scaleBuildingPopulation('residentPopulation', target.residentPop * randomVariance());
+        this.scaleBuildingPopulation('workerPopulation', target.workerPop * randomVariance());
+        this.scaleBuildingPopulation('visitorPopulation', target.visitorPop * randomVariance());
 
         this.buildings.forEach(b => {
             b.baseDailyWaste = b.estimateDailyWaste();
@@ -609,9 +734,18 @@ class CitySimulation {
         const currentTotal = this.buildings.reduce((sum, b) => sum + (b[field] || 0), 0);
         if (currentTotal <= 0) return;
 
+        const eligible = this.buildings.filter(b => (b[field] || 0) > 0);
+        if (eligible.length === 0) return;
+
         let assigned = 0;
-        this.buildings.forEach((b, index) => {
-            if (index === this.buildings.length - 1) {
+        this.buildings.forEach(b => {
+            if (!eligible.includes(b)) {
+                b[field] = 0;
+            }
+        });
+
+        eligible.forEach((b, index) => {
+            if (index === eligible.length - 1) {
                 b[field] = Math.max(0, Math.round(targetTotal) - assigned);
                 return;
             }
@@ -669,13 +803,13 @@ class CitySimulation {
                 if (items.length === 0) return;
                 tooltip.style.display = 'block';
                 tooltip.innerHTML = createTooltipHTML(getTitle(), items);
+                tooltip.scrollTop = 0;
             };
             box.onmousemove = (e) => {
-                tooltip.style.left = (e.clientX + 15) + 'px';
-                tooltip.style.top = (e.clientY + 15) + 'px';
+                positionTooltip(e);
             };
             box.onmouseleave = () => {
-                tooltip.style.display = 'none';
+                hideTooltip();
             };
         };
 
@@ -772,24 +906,72 @@ class CitySimulation {
         this.updateStatsTooltips();
     }
 
+    drawRoadLayer(path, style, width, dash = []) {
+        const ctx = this.ctx;
+        ctx.strokeStyle = style;
+        ctx.lineWidth = width;
+        ctx.setLineDash(dash);
+        ctx.beginPath();
+        ctx.moveTo(path.x1, path.y1);
+        ctx.lineTo(path.x2, path.y2);
+        ctx.stroke();
+    }
+
+    drawRoadNetwork() {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.lineCap = 'round';
+
+        this.roadPaths.forEach(path => this.drawRoadLayer(path, COLORS.ROAD_EDGE, this.config.roadWidth + 6));
+        this.roadPaths.forEach(path => this.drawRoadLayer(path, COLORS.ROAD, this.config.roadWidth));
+        this.roadPaths.forEach(path => this.drawRoadLayer(path, COLORS.ROAD_LANE, 2, [18, 14]));
+
+        ctx.restore();
+    }
+
+    getTrafficPopulation(population = null) {
+        const resident = population?.residentPop ?? this.totalResidentPopulation;
+        const worker = population?.workerPop ?? this.totalWorkerPopulation;
+        const visitor = population?.visitorPop ?? this.totalVisitorPopulation;
+        return resident * 0.12 + worker * 0.55 + visitor * 0.28;
+    }
+
+    getTargetVehicleCount(population = null) {
+        const scaledTraffic = Math.sqrt(Math.max(this.getTrafficPopulation(population), 0)) * (this.config.trafficScale ?? 1);
+        if ((this.config.trafficScale ?? 1) <= 0) return 0;
+        return Math.round(clamp(scaledTraffic / 14, 2, 70));
+    }
+
+    getVehicleSpawnChance() {
+        const target = this.getTargetVehicleCount();
+        return clamp(0.012 + target / 900, 0.015, 0.09);
+    }
+
+    spawnVehiclePair(path, targetVehicles) {
+        const canSpawnPair = this.vehicles.length <= targetVehicles - 2;
+        if (canSpawnPair) {
+            this.vehicles.push(new Vehicle(path, this.config.roadWidth, false));
+            this.vehicles.push(new Vehicle(path, this.config.roadWidth, true));
+            return;
+        }
+
+        const reverseCount = this.vehicles.filter(v => v.reverse).length;
+        const forwardCount = this.vehicles.length - reverseCount;
+        this.vehicles.push(new Vehicle(path, this.config.roadWidth, reverseCount < forwardCount));
+    }
+
     animate() {
         this.ctx.fillStyle = COLORS.BG;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.ctx.strokeStyle = COLORS.ROAD;
-        this.ctx.lineWidth = this.config.roadWidth;
-        this.ctx.lineCap = 'round';
-        this.roadPaths.forEach(path => {
-            this.ctx.beginPath();
-            this.ctx.moveTo(path.x1, path.y1);
-            this.ctx.lineTo(path.x2, path.y2);
-            this.ctx.stroke();
-        });
+        this.drawRoadNetwork();
 
         this.buildings.forEach(b => b.draw(this.ctx));
 
-        if (Math.random() < this.config.spawnChance) {
-            this.vehicles.push(new Vehicle(this.roadPaths[Math.floor(Math.random() * this.roadPaths.length)]));
+        const targetVehicles = this.getTargetVehicleCount();
+        if (this.roadPaths.length > 0 && this.vehicles.length < targetVehicles && Math.random() < this.getVehicleSpawnChance()) {
+            const path = this.roadPaths[Math.floor(Math.random() * this.roadPaths.length)];
+            this.spawnVehiclePair(path, targetVehicles);
         }
         this.vehicles = this.vehicles.filter(v => v.alive);
         this.vehicles.forEach(v => { v.update(); v.draw(this.ctx); });
@@ -806,6 +988,12 @@ let activeCity = null;
 
 // Ensure initialization happens after DOM load
 window.onload = () => {
+    const usedStartupLayouts = [];
+    const usedStartupPresets = [];
+    applyTheme('dark');
+    applyRandomStartupConfig(cityLeft, usedStartupLayouts, usedStartupPresets);
+    applyRandomStartupConfig(cityRight, usedStartupLayouts, usedStartupPresets);
+    syncTypeToggleButtons();
     cityLeft.init();
     cityRight.init();
 };
@@ -827,6 +1015,90 @@ const targetWorkerPopInput = document.getElementById('target-worker-pop');
 const targetVisitorPopInput = document.getElementById('target-visitor-pop');
 const targetWasteTonInput = document.getElementById('target-waste-ton');
 const cityFitResult = document.getElementById('city-fit-result');
+const trafficScaleRange = document.getElementById('traffic-scale');
+const trafficScaleLabel = document.getElementById('traffic-scale-label');
+const trafficEstimate = document.getElementById('traffic-estimate');
+const wasteScaleRange = document.getElementById('waste-scale');
+const wasteScaleLabel = document.getElementById('waste-scale-label');
+const wasteScaleStatus = document.getElementById('waste-scale-status');
+const wasteScaleTitle = document.getElementById('waste-scale-title');
+const wasteScaleDesc = document.getElementById('waste-scale-desc');
+const themeToggleButton = document.getElementById('btn-theme-toggle');
+const typeToggleButtons = document.querySelectorAll('.btn-toggle-types');
+const randomRatioButtons = document.querySelectorAll('.btn-random-ratio');
+let currentTheme = 'dark';
+
+function getCityByKey(key) {
+    return key === 'left' ? cityLeft : cityRight;
+}
+
+function applyTheme(theme) {
+    currentTheme = theme;
+    Object.assign(COLORS, THEME_COLORS[theme]);
+    document.body.classList.toggle('light-mode', theme === 'light');
+    themeToggleButton.innerText = theme === 'light' ? '다크' : '화이트';
+    themeToggleButton.setAttribute('aria-pressed', String(theme === 'light'));
+}
+
+function syncTypeToggleButtons() {
+    typeToggleButtons.forEach(button => {
+        const city = getCityByKey(button.dataset.city);
+        const label = button.dataset.city === 'left' ? 'A' : 'B';
+        button.classList.toggle('is-active', city.config.showTypes);
+        button.setAttribute('aria-pressed', String(city.config.showTypes));
+        button.innerText = city.config.showTypes ? `${label} 숨김` : `${label} 유형`;
+    });
+}
+
+function setCityShowTypes(city, showTypes) {
+    city.config.showTypes = showTypes;
+    if (activeCity === city) {
+        document.getElementById('show-types').checked = showTypes;
+    }
+    syncTypeToggleButtons();
+}
+
+function resetCityWaste(city) {
+    city.totalCityWaste = 0;
+    city.totalWasteDisplay.innerText = '0';
+}
+
+function randomizeCityConfig(city) {
+    applyRandomStartupConfig(city);
+    city.createCity();
+    resetCityWaste(city);
+
+    if (activeCity === city) {
+        presetSelect.value = 'custom';
+        roadLayoutSelect.value = city.config.roadLayout || 0;
+        buildingCountRange.value = city.config.targetBuildings;
+        buildingCountNumber.value = city.config.targetBuildings;
+        updateScaleControlsFromConfig();
+        updateRatioUI();
+        updatePopulationEstimateUI();
+        cityFitResult.innerText = '도로, 건물 수, 인구 배율, 자동차 비율, 건물 유형 비율을 새로 섞었습니다.';
+    }
+
+    updateComparisonBar();
+}
+
+function positionTooltip(e) {
+    const margin = 12;
+    const offset = 16;
+    const rect = tooltip.getBoundingClientRect();
+    let left = e.clientX + offset;
+    let top = e.clientY + offset;
+
+    if (left + rect.width + margin > window.innerWidth) {
+        left = e.clientX - rect.width - offset;
+    }
+    if (top + rect.height + margin > window.innerHeight) {
+        top = window.innerHeight - rect.height - margin;
+    }
+
+    tooltip.style.left = `${Math.max(margin, left)}px`;
+    tooltip.style.top = `${Math.max(margin, top)}px`;
+}
 
 // 전역 컨트롤
 document.getElementById('btn-generate-all').onclick = () => {
@@ -835,17 +1107,23 @@ document.getElementById('btn-generate-all').onclick = () => {
     updateComparisonBar();
 };
 
-document.getElementById('btn-reset-all').onclick = () => {
-    cityLeft.createCity();
-    cityLeft.totalCityWaste = 0;
-    cityLeft.totalWasteDisplay.innerText = '0';
-    
-    cityRight.createCity();
-    cityRight.totalCityWaste = 0;
-    cityRight.totalWasteDisplay.innerText = '0';
-    
-    updateComparisonBar();
+themeToggleButton.onclick = () => {
+    applyTheme(currentTheme === 'light' ? 'dark' : 'light');
 };
+
+typeToggleButtons.forEach(button => {
+    button.onclick = (e) => {
+        const city = getCityByKey(e.currentTarget.dataset.city);
+        setCityShowTypes(city, !city.config.showTypes);
+    };
+});
+
+randomRatioButtons.forEach(button => {
+    button.onclick = (e) => {
+        const city = getCityByKey(e.currentTarget.dataset.city);
+        randomizeCityConfig(city);
+    };
+});
 
 function updateComparisonBar() {
     const total = cityLeft.totalCityWaste + cityRight.totalCityWaste;
@@ -901,12 +1179,62 @@ function updatePopulationEstimateUI() {
     estimateWorkerPop.innerText = `${formatPeople(estimate.workerPop)}명`;
     estimateVisitorPop.innerText = `${formatPeople(estimate.visitorPop)}명`;
     estimateTotalPop.innerText = `${formatPeople(estimate.totalPop)}명`;
+    updateTrafficEstimateUI();
 }
 
 function updateScaleControlsFromConfig() {
     populationScaleRange.value = activeCity.config.populationScale;
     populationScaleNumber.value = activeCity.config.populationScale;
-    document.getElementById('waste-scale').value = activeCity.config.wasteScale * 100;
+    wasteScaleRange.value = activeCity.config.wasteScale * 100;
+    trafficScaleRange.value = Math.round((activeCity.config.trafficScale || 1) * 100);
+    updateWasteScaleUI();
+    updateTrafficEstimateUI();
+}
+
+function getWasteScaleProfile(scale) {
+    const percent = Math.round(scale * 100);
+    const diff = Math.abs(percent - 100);
+
+    if (percent < 85) {
+        return {
+            key: 'saving',
+            label: `절약형 ${percent}%`,
+            title: '절약하는 도시',
+            desc: `대한민국 평균보다 약 ${diff}% 적게 배출합니다. 감량, 재사용, 분리배출이 잘 되는 도시로 가정합니다.`
+        };
+    }
+
+    if (percent > 115) {
+        return {
+            key: 'wasteful',
+            label: `막배출형 ${percent}%`,
+            title: '막폐기하는 도시',
+            desc: `대한민국 평균보다 약 ${diff}% 많이 배출합니다. 일회용품 사용과 혼합배출이 많은 도시로 가정합니다.`
+        };
+    }
+
+    return {
+        key: 'normal',
+        label: `대한민국 평균 ${percent}%`,
+        title: '보통 도시',
+        desc: '대한민국 생활폐기물 평균 배출계수를 그대로 적용합니다. 슬라이더 중앙값 100%가 기준입니다.'
+    };
+}
+
+function updateWasteScaleUI() {
+    if (!activeCity) return;
+    const profile = getWasteScaleProfile(activeCity.config.wasteScale || 1);
+    wasteScaleLabel.innerText = profile.label;
+    wasteScaleTitle.innerText = profile.title;
+    wasteScaleDesc.innerText = profile.desc;
+    wasteScaleStatus.className = `waste-scale-status ${profile.key}`;
+}
+
+function updateTrafficEstimateUI() {
+    if (!activeCity) return;
+    const estimate = estimatePopulationForConfig(activeCity.config);
+    trafficScaleLabel.innerText = `${Math.round((activeCity.config.trafficScale ?? 1) * 100)}%`;
+    trafficEstimate.innerText = `예상 인구 기준 자동차 수: 약 ${activeCity.getTargetVehicleCount(estimate)}대`;
 }
 
 function applyCityDataToConfig() {
@@ -981,13 +1309,13 @@ document.querySelectorAll('.btn-settings').forEach(btn => {
         document.getElementById('show-types').checked = activeCity.config.showTypes;
         buildingCountRange.value = activeCity.config.targetBuildings;
         buildingCountNumber.value = activeCity.config.targetBuildings;
-        document.getElementById('spawn-rate').value = activeCity.config.spawnChance * 1000;
         updateScaleControlsFromConfig();
         cityFitResult.innerText = '거주 인구만 넣어도 인구 기준 배율을 자동 계산합니다.';
         
         roadLayoutSelect.value = activeCity.config.roadLayout || 0;
         presetSelect.value = activeCity.config.preset || 'custom';
         
+        syncTypeToggleButtons();
         updateRatioUI();
         updatePopulationEstimateUI();
         modal.style.display = 'block';
@@ -998,18 +1326,23 @@ closeBtn.onclick = () => modal.style.display = 'none';
 window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
 
 // 설정 변경 적용
-document.getElementById('show-types').onchange = (e) => activeCity.config.showTypes = e.target.checked;
+document.getElementById('show-types').onchange = (e) => setCityShowTypes(activeCity, e.target.checked);
 document.getElementById('btn-apply-city-data').onclick = applyCityDataToConfig;
 buildingCountRange.oninput = (e) => syncBuildingCountControls(e.target.value);
 buildingCountNumber.onchange = (e) => syncBuildingCountControls(e.target.value);
 populationScaleRange.oninput = (e) => syncPopulationScaleControls(e.target.value);
 populationScaleNumber.onchange = (e) => syncPopulationScaleControls(e.target.value);
-document.getElementById('spawn-rate').oninput = (e) => activeCity.config.spawnChance = e.target.value / 1000;
-document.getElementById('waste-scale').oninput = (e) => {
+trafficScaleRange.oninput = (e) => {
+    activeCity.config.trafficScale = parseInt(e.target.value, 10) / 100;
+    updateTrafficEstimateUI();
+};
+wasteScaleRange.oninput = (e) => {
     activeCity.config.wasteScale = e.target.value / 100;
+    updateWasteScaleUI();
     if (cityFitResult) {
         const wasteTon = estimateDailyWasteForConfig(activeCity.config) / 1000;
-        cityFitResult.innerText = `현재 설정의 예상 폐기물은 약 ${wasteTon.toFixed(1)}톤/일입니다.`;
+        const profile = getWasteScaleProfile(activeCity.config.wasteScale);
+        cityFitResult.innerText = `${profile.title} 기준으로 예상 폐기물은 약 ${wasteTon.toFixed(1)}톤/일입니다.`;
     }
 };
 
@@ -1116,8 +1449,22 @@ document.getElementById('btn-download-csv').onclick = () => {
     document.body.removeChild(link);
 };
 
+let isTooltipHovered = false;
+tooltip.addEventListener('mouseenter', () => { isTooltipHovered = true; });
+tooltip.addEventListener('mouseleave', () => {
+    isTooltipHovered = false;
+    tooltip.style.display = 'none';
+});
+
+function hideTooltip() {
+    if (!isTooltipHovered) {
+        tooltip.style.display = 'none';
+    }
+}
+
 // 툴팁 로직
 [cityLeft, cityRight].forEach(city => {
+    let currentHoveredBuilding = null;
     city.canvas.addEventListener('mousemove', (e) => {
         const rect = city.canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
@@ -1132,8 +1479,10 @@ document.getElementById('btn-download-csv').onclick = () => {
 
         if (hovered) {
             tooltip.style.display = 'block';
-            tooltip.style.left = (e.clientX + 15) + 'px';
-            tooltip.style.top = (e.clientY + 15) + 'px';
+            if (currentHoveredBuilding !== hovered) {
+                tooltip.scrollTop = 0;
+                currentHoveredBuilding = hovered;
+            }
 
             const standingWaste = hovered.lastStandingWaste || 0;
             const visitorWaste = hovered.lastVisitorWaste || 0;
@@ -1169,11 +1518,16 @@ document.getElementById('btn-download-csv').onclick = () => {
                     <div class="tooltip-row"><span class="tooltip-label">포화도</span><span class="tooltip-value">${((hovered.waste / hovered.capacity) * 100).toFixed(1)}%</span></div>
                 </div>
             `;
+            positionTooltip(e);
         } else {
-            tooltip.style.display = 'none';
+            hideTooltip();
+            currentHoveredBuilding = null;
         }
     });
-    city.canvas.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+    city.canvas.addEventListener('mouseleave', () => {
+        hideTooltip();
+        currentHoveredBuilding = null;
+    });
 });
 
 window.addEventListener('resize', () => {

@@ -8,8 +8,13 @@
 </head>
 <body>
     <div id="global-controls">
-        <button id="btn-generate-all">🚀 양쪽 모두 1일 폐기물 발생</button>
-        <button id="btn-reset-all" class="secondary-btn">🏙️ 양쪽 도시 재구성</button>
+        <button id="btn-generate-all">1일 폐기물 계산</button>
+    </div>
+
+    <div id="view-controls" aria-label="보기 설정">
+        <button class="btn-toggle-types view-btn" data-city="left" aria-pressed="false">A 유형</button>
+        <button class="btn-toggle-types view-btn" data-city="right" aria-pressed="false">B 유형</button>
+        <button id="btn-theme-toggle" class="view-btn mode-toggle" aria-pressed="false">화이트</button>
     </div>
 
     <!-- 비교 바 -->
@@ -27,6 +32,7 @@
             <header class="city-header">
                 <div class="city-title">
                     <span class="city-label">도시 A</span>
+                    <button class="btn-random-ratio icon-btn" data-city="left">랜덤 도시</button>
                     <button class="btn-settings icon-btn" data-city="left">⚙️ 설정</button>
                 </div>
                 <div class="stats">
@@ -60,6 +66,7 @@
             <header class="city-header">
                 <div class="city-title">
                     <span class="city-label">도시 B</span>
+                    <button class="btn-random-ratio icon-btn" data-city="right">랜덤 도시</button>
                     <button class="btn-settings icon-btn" data-city="right">⚙️ 설정</button>
                 </div>
                 <div class="stats">
@@ -162,12 +169,20 @@
                         </div>
                     </div>
                     <div class="range-group">
-                        <label>차량 생성 빈도</label>
-                        <input type="range" id="spawn-rate" min="0" max="100" value="50">
-                    </div>
-                    <div class="range-group">
-                        <label>폐기물 발생 배율</label>
+                        <div class="range-header">
+                            <label>폐기물 발생 비율</label>
+                            <span id="waste-scale-label" class="range-value">대한민국 평균 100%</span>
+                        </div>
                         <input type="range" id="waste-scale" min="1" max="200" value="100">
+                        <div class="waste-scale-guide">
+                            <span>절약형</span>
+                            <span>대한민국 평균</span>
+                            <span>막배출형</span>
+                        </div>
+                        <div id="waste-scale-status" class="waste-scale-status normal">
+                            <strong id="waste-scale-title">보통 도시</strong>
+                            <span id="waste-scale-desc">대한민국 생활폐기물 평균 배출계수를 그대로 적용합니다.</span>
+                        </div>
                     </div>
                     <div class="range-group">
                         <label>도로 구조</label>
@@ -176,18 +191,34 @@
                             <option value="1">그리드 (격자형)</option>
                             <option value="2">순환도로</option>
                             <option value="3">수평 평행선</option>
+                            <option value="4">중앙 간선 + 지선</option>
+                            <option value="5">방사형 교차로</option>
+                            <option value="6">외곽 우회 + 내부 연결</option>
                         </select>
                     </div>
+                </div>
+                <div class="setting-group">
+                    <label>기타 설정</label>
+                    <div class="range-group">
+                        <div class="range-header">
+                            <label>자동차 비율</label>
+                            <span id="traffic-scale-label" class="range-value">100%</span>
+                        </div>
+                        <input type="range" id="traffic-scale" min="0" max="200" value="100">
+                    </div>
+                    <div id="traffic-estimate" class="fit-result">인구 규모에 따라 자동차 수가 자동으로 정해집니다.</div>
                 </div>
                 <div class="setting-group">
                     <div class="preset-header">
                         <label>건물 유형 비율 (가중치)</label>
                         <select id="ratio-preset" class="styled-select preset-select">
                             <option value="custom">사용자 지정</option>
-                            <option value="residential">주거 지역</option>
-                            <option value="commercial">상업 지역</option>
-                            <option value="industrial">산업/업무 단지</option>
-                            <option value="balanced">균형</option>
+                            <option value="villa">빌라/저층 주거지</option>
+                            <option value="apartment">아파트 단지</option>
+                            <option value="oldDowntown">원도심/상가 밀집지</option>
+                            <option value="officeDistrict">업무지구</option>
+                            <option value="factoryDistrict">공장지대</option>
+                            <option value="mixedCity">복합 생활권</option>
                         </select>
                     </div>
                     <div id="ratio-controls" class="ratio-grid">
