@@ -24,17 +24,49 @@ const NAME_SUFFIXES = {
     GOVERNMENT: ['청사', '본부', '지원센터', '공사']
 };
 
+const WASTE_RATES = {
+    RESIDENTIAL: { standing: 1.23, visitor: 0.08 },
+    COMMERCIAL_FOOD: { standing: 2.50, visitor: 0.08 },
+    COMMERCIAL_RETAIL: { standing: 0.70, visitor: 0.05 },
+    SCHOOL: { standing: 0.35, visitor: 0.08 },
+    INDUSTRIAL: { standing: 1.35, visitor: 0.05 },
+    MEDICAL: { standing: 0.95, visitor: 0.10 },
+    OFFICE: { standing: 0.21, visitor: 0.04 },
+    PARK: { standing: 0.10, visitor: 0.02 },
+    // 임시 작업자까지 포함하는 경우 유동 인구 계수는 더 높게 설정 가능
+    CONSTRUCTION: { standing: 2.80, visitor: 0.20 },
+    GOVERNMENT: { standing: 0.25, visitor: 0.03 }
+};
+
 const BUILDING_TYPES = {
-    RESIDENTIAL: { label: '주거 시설', color: '#5c7aff', volatility: 0.2, workerDensity: 8.5, visitorDensity: 0.5, workerWasteRate: 0.45, visitorWasteRate: 0.05, icon: '🏠' },
-    COMMERCIAL_FOOD: { label: '음식점/카페', color: '#ff6b9d', volatility: 0.8, workerDensity: 1.0, visitorDensity: 12.0, workerWasteRate: 1.82, visitorWasteRate: 0.30, icon: '🍕' },
-    COMMERCIAL_RETAIL: { label: '상점/마트', color: '#ffcf56', volatility: 0.5, workerDensity: 0.8, visitorDensity: 10.0, workerWasteRate: 0.53, visitorWasteRate: 0.10, icon: '🛍️' },
-    SCHOOL: { label: '학교/교육시설', color: '#7ad3f0', volatility: 0.3, workerDensity: 0.5, visitorDensity: 5.0, workerWasteRate: 0.35, visitorWasteRate: 0.30, icon: '🏫' },
-    INDUSTRIAL: { label: '산업/공장', color: '#9d66ff', volatility: 0.9, workerDensity: 3.0, visitorDensity: 0.5, workerWasteRate: 1.20, visitorWasteRate: 0.05, icon: '🏭' },
-    MEDICAL: { label: '의료/병원', color: '#ff7676', volatility: 0.4, workerDensity: 1.5, visitorDensity: 6.0, workerWasteRate: 0.95, visitorWasteRate: 0.10, icon: '🏥' },
-    OFFICE: { label: '업무/오피스', color: '#b2b0ff', volatility: 0.4, workerDensity: 6.0, visitorDensity: 2.0, workerWasteRate: 0.21, visitorWasteRate: 0.05, icon: '🏢' },
-    PARK: { label: '공원/녹지', color: '#56d8b1', volatility: 0.2, workerDensity: 0.1, visitorDensity: 4.0, workerWasteRate: 0.10, visitorWasteRate: 0.05, icon: '🌳' },
-    CONSTRUCTION: { label: '공사 현장', color: '#ffd891', volatility: 1.2, workerDensity: 2.0, visitorDensity: 0.2, workerWasteRate: 2.50, visitorWasteRate: 0.10, icon: '🚧' },
-    GOVERNMENT: { label: '공공 기관', color: '#66b2ff', volatility: 0.3, workerDensity: 1.5, visitorDensity: 8.0, workerWasteRate: 0.25, visitorWasteRate: 0.05, icon: '🏛️' }
+    RESIDENTIAL: { label: '주거 시설', color: '#5c7aff', volatility: 0.2, workerDensity: 8.5, visitorDensity: 0.5, workerWasteRate: WASTE_RATES.RESIDENTIAL.standing, visitorWasteRate: WASTE_RATES.RESIDENTIAL.visitor, icon: '🏠', wasteShares: { mixed: 0.269, food: 0.253, recyclable: 0.251, other: 0.227 } },
+    COMMERCIAL_FOOD: { label: '음식점/카페', color: '#ff6b9d', volatility: 0.8, workerDensity: 1.0, visitorDensity: 12.0, workerWasteRate: WASTE_RATES.COMMERCIAL_FOOD.standing, visitorWasteRate: WASTE_RATES.COMMERCIAL_FOOD.visitor, icon: '🍕', wasteShares: { mixed: 0.20, food: 0.55, recyclable: 0.15, business: 0.10 } },
+    COMMERCIAL_RETAIL: { label: '상점/마트', color: '#ffcf56', volatility: 0.5, workerDensity: 0.8, visitorDensity: 10.0, workerWasteRate: WASTE_RATES.COMMERCIAL_RETAIL.standing, visitorWasteRate: WASTE_RATES.COMMERCIAL_RETAIL.visitor, icon: '🛍️', wasteShares: { mixed: 0.25, food: 0.10, recyclable: 0.45, business: 0.20 } },
+    SCHOOL: { label: '학교/교육시설', color: '#7ad3f0', volatility: 0.3, workerDensity: 0.5, visitorDensity: 5.0, workerWasteRate: WASTE_RATES.SCHOOL.standing, visitorWasteRate: WASTE_RATES.SCHOOL.visitor, icon: '🏫', wasteShares: { mixed: 0.35, food: 0.35, recyclable: 0.25, other: 0.05 } },
+    INDUSTRIAL: { label: '산업/공장', color: '#9d66ff', volatility: 0.9, workerDensity: 3.0, visitorDensity: 0.5, workerWasteRate: WASTE_RATES.INDUSTRIAL.standing, visitorWasteRate: WASTE_RATES.INDUSTRIAL.visitor, icon: '🏭', wasteShares: { mixed: 0.05, recyclable: 0.20, business: 0.75 } },
+    MEDICAL: { label: '의료/병원', color: '#ff7676', volatility: 0.4, workerDensity: 1.5, visitorDensity: 6.0, workerWasteRate: WASTE_RATES.MEDICAL.standing, visitorWasteRate: WASTE_RATES.MEDICAL.visitor, icon: '🏥', wasteShares: { mixed: 0.05, food: 0.05, recyclable: 0.05, medical: 0.75, other: 0.10 } },
+    OFFICE: { label: '업무/오피스', color: '#b2b0ff', volatility: 0.4, workerDensity: 6.0, visitorDensity: 2.0, workerWasteRate: WASTE_RATES.OFFICE.standing, visitorWasteRate: WASTE_RATES.OFFICE.visitor, icon: '🏢', wasteShares: { mixed: 0.35, food: 0.15, recyclable: 0.45, other: 0.05 } },
+    PARK: { label: '공원/녹지', color: '#56d8b1', volatility: 0.2, workerDensity: 0.1, visitorDensity: 4.0, workerWasteRate: WASTE_RATES.PARK.standing, visitorWasteRate: WASTE_RATES.PARK.visitor, icon: '🌳', wasteShares: { mixed: 0.45, food: 0.25, recyclable: 0.25, other: 0.05 } },
+    CONSTRUCTION: { label: '공사 현장', color: '#ffd891', volatility: 1.2, workerDensity: 2.0, visitorDensity: 0.2, workerWasteRate: WASTE_RATES.CONSTRUCTION.standing, visitorWasteRate: WASTE_RATES.CONSTRUCTION.visitor, icon: '🚧', wasteShares: { mixed: 0.05, recyclable: 0.10, construction: 0.85 } },
+    GOVERNMENT: { label: '공공 기관', color: '#66b2ff', volatility: 0.3, workerDensity: 1.5, visitorDensity: 8.0, workerWasteRate: WASTE_RATES.GOVERNMENT.standing, visitorWasteRate: WASTE_RATES.GOVERNMENT.visitor, icon: '🏛️', wasteShares: { mixed: 0.35, food: 0.15, recyclable: 0.45, other: 0.05 } }
+};
+
+const WASTE_STREAMS = {
+    mixed: '혼합배출',
+    food: '음식물',
+    recyclable: '재활용',
+    business: '사업장',
+    construction: '건설',
+    medical: '의료',
+    other: '기타'
+};
+
+const SIMULATION_BASELINE = {
+    unit: 'kg/일',
+    collectionStorageDays: 1.5,
+    minDailyFactor: 0.35,
+    maxDailyFactor: 1.85,
+    description: '2024 생활계폐기물 1.23kg/일·인 기준, 업종별 임시 보정계수 적용'
 };
 
 const COLORS = {
@@ -43,6 +75,34 @@ const COLORS = {
     BUILDING_DEFAULT: '#1a1a2e',
     CAR_TYPES: ['#4361ee', '#f72585', '#7209b7', '#4cc9f0', '#fbbf24']
 };
+
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
+
+function formatKg(value) {
+    return Math.round(value || 0).toLocaleString();
+}
+
+function createWasteBreakdown() {
+    return Object.keys(WASTE_STREAMS).reduce((acc, key) => {
+        acc[key] = 0;
+        return acc;
+    }, {});
+}
+
+function allocateWaste(totalWaste, shares) {
+    const breakdown = createWasteBreakdown();
+    const totalShare = Object.values(shares).reduce((sum, value) => sum + value, 0);
+    if (totalShare <= 0 || totalWaste <= 0) return breakdown;
+
+    Object.keys(shares).forEach(key => {
+        if (breakdown[key] !== undefined) {
+            breakdown[key] = totalWaste * (shares[key] / totalShare);
+        }
+    });
+    return breakdown;
+}
 
 // --- 서포트 클래스 ---
 
@@ -65,16 +125,38 @@ class Building {
         const suf = sufList[Math.floor(Math.random() * sufList.length)];
         this.name = `${pre} ${suf}`;
         
-        this.capacity = size * size * 0.05 * ((this.type.workerWasteRate || 0) + (this.type.visitorWasteRate || 0));
         this.resPopulation = Math.floor(size * size * 0.02 * (this.type.workerDensity || 0));
         this.floatPopulation = Math.floor(size * size * 0.02 * (this.type.visitorDensity || 0));
+        this.baseDailyWaste = this.estimateDailyWaste();
+        this.capacity = this.baseDailyWaste * SIMULATION_BASELINE.collectionStorageDays;
+        this.wasteBreakdown = createWasteBreakdown();
+        this.lastStandingWaste = 0;
+        this.lastVisitorWaste = 0;
+    }
+
+    estimateDailyWaste() {
+        const standingWaste = this.resPopulation * (this.type.workerWasteRate || 0);
+        const visitorWaste = this.floatPopulation * (this.type.visitorWasteRate || 0);
+        return (standingWaste + visitorWaste) * this.city.config.wasteScale;
     }
 
     randomize() {
-        const variation = Math.random() * this.type.volatility;
-        const baseRate = 0.5; // Default base utilization
-        this.waste = this.capacity * (baseRate + variation) * this.city.config.wasteScale;
-        if (this.waste > this.capacity) this.waste = this.capacity;
+        const baseWaste = this.estimateDailyWaste();
+        const dailyFactor = clamp(
+            1 + (Math.random() * 2 - 1) * this.type.volatility * 0.45,
+            SIMULATION_BASELINE.minDailyFactor,
+            SIMULATION_BASELINE.maxDailyFactor
+        );
+
+        const standingWaste = this.resPopulation * (this.type.workerWasteRate || 0) * this.city.config.wasteScale * dailyFactor;
+        const visitorWaste = this.floatPopulation * (this.type.visitorWasteRate || 0) * this.city.config.wasteScale * dailyFactor;
+
+        this.baseDailyWaste = baseWaste;
+        this.lastStandingWaste = standingWaste;
+        this.lastVisitorWaste = visitorWaste;
+        this.waste = standingWaste + visitorWaste;
+        this.capacity = Math.max(baseWaste * SIMULATION_BASELINE.collectionStorageDays, this.waste * 1.1, 1);
+        this.wasteBreakdown = allocateWaste(this.waste, this.type.wasteShares || { other: 1 });
         return this.waste;
     }
 
@@ -211,9 +293,9 @@ class CitySimulation {
         const h = this.canvas.height;
 
         // 헤더 통계에 툴팁 추가
-        this.totalResPopDisplay.parentElement.title = "계산식: ∑(건물 면적 × 유형별 인구 밀도 × 0.02)\n* 인구 밀도는 건물 유형마다 상이함";
+        this.totalResPopDisplay.parentElement.title = "계산식: ∑(건물 면적 × 유형별 상주/종사 인구 밀도 × 0.02)\n* 주거지는 거주자, 비주거지는 종사자/작업자 성격의 상주 인구로 간주";
         this.totalFloatPopDisplay.parentElement.title = "계산식: ∑(건물 면적 × 유형별 방문 밀도 × 0.02)\n* 방문 밀도는 건물 유형마다 상이함";
-        this.totalWasteDisplay.parentElement.title = "계산식: ∑(건물별 실시간 발생량)\n* 발생량 = 용량 × (기본 가동률 + 변동치) × 발생 배율";
+        this.totalWasteDisplay.parentElement.title = "계산식: ∑(상주/종사 인구 × 1인 1일 배출계수 + 유동 인구 × 방문 배출계수)\n* 단위: kg/일, 업종별 변동계수 적용";
         this.totalResPopDisplay.parentElement.style.cursor = 'help';
         this.totalFloatPopDisplay.parentElement.style.cursor = 'help';
         this.totalWasteDisplay.parentElement.style.cursor = 'help';
@@ -284,9 +366,13 @@ class CitySimulation {
                 const pre = NAME_PREFIXES[Math.floor(Math.random() * NAME_PREFIXES.length)];
                 const sufList = NAME_SUFFIXES[forcedType] || ['건물'];
                 b.name = `${pre} ${sufList[Math.floor(Math.random() * sufList.length)]}`;
-                b.capacity = size * size * 0.05 * ((b.type.workerWasteRate || 0) + (b.type.visitorWasteRate || 0));
                 b.resPopulation = Math.floor(size * size * 0.02 * (b.type.workerDensity || 0));
                 b.floatPopulation = Math.floor(size * size * 0.02 * (b.type.visitorDensity || 0));
+                b.baseDailyWaste = b.estimateDailyWaste();
+                b.capacity = b.baseDailyWaste * SIMULATION_BASELINE.collectionStorageDays;
+                b.wasteBreakdown = createWasteBreakdown();
+                b.lastStandingWaste = 0;
+                b.lastVisitorWaste = 0;
                 
                 this.buildings.push(b);
             }
@@ -314,14 +400,8 @@ class CitySimulation {
             s.resPop += b.resPopulation || 0;
             s.floatPop += b.floatPopulation || 0;
             
-            const workerRate = b.type.workerWasteRate || 0;
-            const visitorRate = b.type.visitorWasteRate || 0;
-            const totalRate = workerRate + visitorRate;
-            
-            if (totalRate > 0) {
-                s.resWaste += b.waste * (workerRate / totalRate);
-                s.floatWaste += b.waste * (visitorRate / totalRate);
-            }
+            s.resWaste += b.lastStandingWaste || 0;
+            s.floatWaste += b.lastVisitorWaste || 0;
             s.totalWaste += b.waste;
         });
 
@@ -368,12 +448,12 @@ class CitySimulation {
                 .filter(i => i.show);
         });
 
-        // 거주 인구 툴팁
-        setupHeaderTooltip(this.totalResPopDisplay, () => "🏠 거주 인구 상세", () => {
+        // 상주/종사 인구 툴팁
+        setupHeaderTooltip(this.totalResPopDisplay, () => "🏠 상주/종사 인구 상세", () => {
             return Object.keys(BUILDING_TYPES)
                 .map(k => ({
                     label: BUILDING_TYPES[k].label,
-                    value: `${stats[k].resPop.toLocaleString()}명 (${Math.floor(stats[k].resWaste).toLocaleString()}kg)`,
+                    value: `${stats[k].resPop.toLocaleString()}명 (${formatKg(stats[k].resWaste)}kg/일)`,
                     show: stats[k].resPop > 0 || stats[k].resWaste > 0
                 }))
                 .filter(i => i.show);
@@ -384,18 +464,18 @@ class CitySimulation {
             return Object.keys(BUILDING_TYPES)
                 .map(k => ({
                     label: BUILDING_TYPES[k].label,
-                    value: `${stats[k].floatPop.toLocaleString()}명 (${Math.floor(stats[k].floatWaste).toLocaleString()}kg)`,
+                    value: `${stats[k].floatPop.toLocaleString()}명 (${formatKg(stats[k].floatWaste)}kg/일)`,
                     show: stats[k].floatPop > 0 || stats[k].floatWaste > 0
                 }))
                 .filter(i => i.show);
         });
 
         // 폐기물 툴팁
-        setupHeaderTooltip(this.totalWasteDisplay, () => "♻️ 유형별 폐기물 배출량", () => {
+        setupHeaderTooltip(this.totalWasteDisplay, () => "♻️ 유형별 1일 폐기물 배출량", () => {
             return Object.keys(BUILDING_TYPES)
                 .map(k => ({
                     label: BUILDING_TYPES[k].label,
-                    value: `${Math.floor(stats[k].totalWaste).toLocaleString()}kg`,
+                    value: `${formatKg(stats[k].totalWaste)}kg/일`,
                     show: stats[k].totalWaste > 0
                 }))
                 .filter(i => i.show);
@@ -413,7 +493,7 @@ class CitySimulation {
     generateWaste() {
         this.totalCityWaste = 0;
         this.buildings.forEach(b => this.totalCityWaste += b.randomize());
-        this.totalWasteDisplay.innerText = Math.floor(this.totalCityWaste).toLocaleString();
+        this.totalWasteDisplay.innerText = formatKg(this.totalCityWaste);
         this.updateStatsTooltips();
     }
 
@@ -551,10 +631,10 @@ function updateRatioUI() {
         item.className = 'ratio-item';
         
         const statsInfo = `[${type.label} 통계]\n` +
-            `• 거주 인구 밀도: ${type.workerDensity}\n` +
+            `• 상주/종사 인구 밀도: ${type.workerDensity}\n` +
             `• 유동 인구 밀도: ${type.visitorDensity}\n` +
-            `• 거주인 폐기물률: ${type.workerWasteRate}kg/인\n` +
-            `• 방문객 폐기물률: ${type.visitorWasteRate}kg/인`;
+            `• 상주/종사 1인 1일 배출계수: ${type.workerWasteRate}kg/일\n` +
+            `• 방문 1인 배출계수: ${type.visitorWasteRate}kg/일`;
 
         item.innerHTML = `
             <label title="${statsInfo}" style="cursor: help;">${type.icon} ${type.label} ⓘ</label>
@@ -578,11 +658,38 @@ document.getElementById('btn-reset-city').onclick = () => {
 
 document.getElementById('btn-download-csv').onclick = () => {
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-    csvContent += "도시,ID,이름,유형,쓰레기 발생량(kg),최대 용량(kg)\n";
+    csvContent += [
+        "도시", "ID", "이름", "유형", "상주/종사인구(명)", "유동인구(명)",
+        "상주계수(kg/일·인)", "유동계수(kg/일·인)", "총폐기물(kg/일)",
+        "혼합배출(kg/일)", "음식물(kg/일)", "재활용(kg/일)", "사업장(kg/일)",
+        "건설(kg/일)", "의료(kg/일)", "기타(kg/일)", "임시보관용량(kg)"
+    ].join(",") + "\n";
+
+    const csvCell = (value) => `"${String(value).replace(/"/g, '""')}"`;
     
     const exportData = (city, label) => {
         city.buildings.forEach((b, i) => {
-            csvContent += `${label},${i + 1},${b.name},${b.type.label},${b.waste.toFixed(2)},${b.capacity.toFixed(2)}\n`;
+            const breakdown = b.wasteBreakdown || createWasteBreakdown();
+            const row = [
+                label,
+                i + 1,
+                b.name,
+                b.type.label,
+                b.resPopulation,
+                b.floatPopulation,
+                (b.type.workerWasteRate || 0).toFixed(2),
+                (b.type.visitorWasteRate || 0).toFixed(2),
+                Math.round(b.waste),
+                Math.round(breakdown.mixed),
+                Math.round(breakdown.food),
+                Math.round(breakdown.recyclable),
+                Math.round(breakdown.business),
+                Math.round(breakdown.construction),
+                Math.round(breakdown.medical),
+                Math.round(breakdown.other),
+                Math.round(b.capacity)
+            ];
+            csvContent += row.map(csvCell).join(",") + "\n";
         });
     };
 
@@ -617,27 +724,26 @@ document.getElementById('btn-download-csv').onclick = () => {
             tooltip.style.left = (e.clientX + 15) + 'px';
             tooltip.style.top = (e.clientY + 15) + 'px';
 
-            const workerRate = hovered.type.workerWasteRate || 0;
-            const visitorRate = hovered.type.visitorWasteRate || 0;
-            const totalRate = workerRate + visitorRate;
-            
-            let resWaste = 0;
-            let floatWaste = 0;
-            if (totalRate > 0) {
-                resWaste = hovered.waste * (workerRate / totalRate);
-                floatWaste = hovered.waste * (visitorRate / totalRate);
-            }
+            const resWaste = hovered.lastStandingWaste || 0;
+            const floatWaste = hovered.lastVisitorWaste || 0;
+            const breakdownRows = Object.keys(WASTE_STREAMS)
+                .filter(key => (hovered.wasteBreakdown?.[key] || 0) > 0)
+                .map(key => `
+                    <div class="tooltip-row"><span class="tooltip-label">${WASTE_STREAMS[key]}</span><span class="tooltip-value">${formatKg(hovered.wasteBreakdown[key])} kg/일</span></div>
+                `)
+                .join('');
 
             tooltip.innerHTML = `
                 <div class="tooltip-title"><span>${hovered.type.icon}</span><span>${hovered.name}</span></div>
                 <div class="tooltip-info">
                     <div class="tooltip-row"><span class="tooltip-label">유형</span><span class="tooltip-value">${hovered.type.label}</span></div>
-                    <div class="tooltip-row"><span class="tooltip-label">인구수</span><span class="tooltip-value">${hovered.resPopulation.toLocaleString()}명</span></div>
+                    <div class="tooltip-row"><span class="tooltip-label">상주/종사 인구</span><span class="tooltip-value">${hovered.resPopulation.toLocaleString()}명</span></div>
                     <div class="tooltip-row"><span class="tooltip-label">유동인구</span><span class="tooltip-value">${hovered.floatPopulation.toLocaleString()}명</span></div>
                     <div class="tooltip-divider" style="height: 1px; background: rgba(255,255,255,0.1); margin: 5px 0;"></div>
-                    <div class="tooltip-row"><span class="tooltip-label">인구수 폐기물</span><span class="tooltip-value">${Math.floor(resWaste).toLocaleString()} kg</span></div>
-                    <div class="tooltip-row"><span class="tooltip-label">유동인구 폐기물</span><span class="tooltip-value">${Math.floor(floatWaste).toLocaleString()} kg</span></div>
-                    <div class="tooltip-row"><span class="tooltip-label">총 폐기물</span><span class="tooltip-value">${Math.floor(hovered.waste).toLocaleString()} kg</span></div>
+                    <div class="tooltip-row"><span class="tooltip-label">상주/종사 폐기물</span><span class="tooltip-value">${formatKg(resWaste)} kg/일</span></div>
+                    <div class="tooltip-row"><span class="tooltip-label">유동 폐기물</span><span class="tooltip-value">${formatKg(floatWaste)} kg/일</span></div>
+                    <div class="tooltip-row"><span class="tooltip-label">총 폐기물</span><span class="tooltip-value">${formatKg(hovered.waste)} kg/일</span></div>
+                    ${breakdownRows}
                     <div class="tooltip-row"><span class="tooltip-label">포화도</span><span class="tooltip-value">${((hovered.waste / hovered.capacity) * 100).toFixed(1)}%</span></div>
                 </div>
             `;
