@@ -133,7 +133,7 @@ body {
 
 .stats {
     display: flex;
-    gap: 20px;
+    gap: 14px;
 }
 
 .stat-box {
@@ -315,6 +315,99 @@ input[type="range"] {
     cursor: pointer;
 }
 
+.range-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.range-header label {
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+.range-header input[type="number"] {
+    width: 86px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.city-data-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.city-data-field {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.city-data-field label {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.62);
+}
+
+.city-data-field input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    outline: none;
+}
+
+.fit-result {
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.74rem;
+    line-height: 1.4;
+}
+
+.estimate-panel {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+    background: rgba(76, 201, 240, 0.08);
+    border: 1px solid rgba(76, 201, 240, 0.18);
+    border-radius: 8px;
+}
+
+.estimate-item {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.estimate-label {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.62);
+}
+
+.estimate-item strong {
+    font-size: 0.88rem;
+    color: #fff;
+    white-space: nowrap;
+}
+
 .styled-select {
     width: 100%;
     padding: 8px 12px;
@@ -378,6 +471,9 @@ input[type="range"] {
     backdrop-filter: blur(5px);
     color: #fff;
     min-width: 150px;
+    max-width: min(360px, calc(100vw - 24px));
+    max-height: min(72vh, 620px);
+    overflow-y: auto;
 }
 
 .tooltip-title {
@@ -402,6 +498,16 @@ input[type="range"] {
     display: flex;
     justify-content: space-between;
     gap: 15px;
+}
+
+.tooltip-section {
+    color: #9ff6ff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .tooltip-label {
