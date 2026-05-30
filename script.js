@@ -1462,63 +1462,68 @@ function hideTooltip() {
     }
 }
 
+function findBuildingAt(city, clientX, clientY) {
+    const rect = city.canvas.getBoundingClientRect();
+    const mx = clientX - rect.left;
+    const my = clientY - rect.top;
+
+    return city.buildings.find(b => (
+        mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h
+    )) || null;
+}
+
+function renderBuildingTooltip(building, pointerEvent, shouldResetScroll = false) {
+    tooltip.style.display = 'block';
+    if (shouldResetScroll) {
+        tooltip.scrollTop = 0;
+    }
+
+    const standingWaste = building.lastStandingWaste || 0;
+    const visitorWaste = building.lastVisitorWaste || 0;
+    const specialWaste = building.lastSpecialWaste || 0;
+    const categoryBreakdown = createWasteCategoryBreakdown(building.wasteBreakdown);
+    const categoryRows = Object.keys(WASTE_CATEGORIES)
+        .filter(key => (categoryBreakdown[key] || 0) > 0)
+        .map(key => `
+            <div class="tooltip-row"><span class="tooltip-label">${WASTE_CATEGORIES[key]}</span><span class="tooltip-value">${formatKg(categoryBreakdown[key])} kg/일</span></div>
+        `)
+        .join('');
+    const breakdownRows = Object.keys(WASTE_STREAMS)
+        .filter(key => (building.wasteBreakdown?.[key] || 0) > 0)
+        .map(key => `
+            <div class="tooltip-row"><span class="tooltip-label">${WASTE_STREAMS[key].label}</span><span class="tooltip-value">${formatKg(building.wasteBreakdown[key])} kg/일</span></div>
+        `)
+        .join('');
+
+    tooltip.innerHTML = `
+            <div class="tooltip-title"><span>${building.type.icon}</span><span>${building.name}</span></div>
+        <div class="tooltip-info">
+            <div class="tooltip-row"><span class="tooltip-label">유형</span><span class="tooltip-value">${building.type.label}</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">거주 인구</span><span class="tooltip-value">${(building.residentPopulation || 0).toLocaleString()}명</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">종사 인구</span><span class="tooltip-value">${(building.workerPopulation || 0).toLocaleString()}명</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">유동 인구</span><span class="tooltip-value">${(building.visitorPopulation || 0).toLocaleString()}명</span></div>
+            <div class="tooltip-divider" style="height: 1px; background: rgba(255,255,255,0.1); margin: 5px 0;"></div>
+            <div class="tooltip-row"><span class="tooltip-label">거주/종사 폐기물</span><span class="tooltip-value">${formatKg(standingWaste)} kg/일</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">유동 폐기물</span><span class="tooltip-value">${formatKg(visitorWaste)} kg/일</span></div>
+            ${specialWaste > 0 ? `<div class="tooltip-row"><span class="tooltip-label">특수 폐기물</span><span class="tooltip-value">${formatKg(specialWaste)} kg/일</span></div>` : ''}
+            <div class="tooltip-row"><span class="tooltip-label">총 폐기물</span><span class="tooltip-value">${formatKg(building.waste)} kg/일</span></div>
+            ${categoryRows ? `<div class="tooltip-section">배출 카테고리</div>${categoryRows}` : ''}
+            ${breakdownRows ? `<div class="tooltip-section">세부 폐기물</div>${breakdownRows}` : ''}
+            <div class="tooltip-row"><span class="tooltip-label">포화도</span><span class="tooltip-value">${((building.waste / building.capacity) * 100).toFixed(1)}%</span></div>
+        </div>
+    `;
+    positionTooltip(pointerEvent);
+}
+
 // 툴팁 로직
 [cityLeft, cityRight].forEach(city => {
     let currentHoveredBuilding = null;
     city.canvas.addEventListener('mousemove', (e) => {
-        const rect = city.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
-
-        let hovered = null;
-        for (let b of city.buildings) {
-            if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
-                hovered = b; break;
-            }
-        }
+        const hovered = findBuildingAt(city, e.clientX, e.clientY);
 
         if (hovered) {
-            tooltip.style.display = 'block';
-            if (currentHoveredBuilding !== hovered) {
-                tooltip.scrollTop = 0;
-                currentHoveredBuilding = hovered;
-            }
-
-            const standingWaste = hovered.lastStandingWaste || 0;
-            const visitorWaste = hovered.lastVisitorWaste || 0;
-            const specialWaste = hovered.lastSpecialWaste || 0;
-            const categoryBreakdown = createWasteCategoryBreakdown(hovered.wasteBreakdown);
-            const categoryRows = Object.keys(WASTE_CATEGORIES)
-                .filter(key => (categoryBreakdown[key] || 0) > 0)
-                .map(key => `
-                    <div class="tooltip-row"><span class="tooltip-label">${WASTE_CATEGORIES[key]}</span><span class="tooltip-value">${formatKg(categoryBreakdown[key])} kg/일</span></div>
-                `)
-                .join('');
-            const breakdownRows = Object.keys(WASTE_STREAMS)
-                .filter(key => (hovered.wasteBreakdown?.[key] || 0) > 0)
-                .map(key => `
-                    <div class="tooltip-row"><span class="tooltip-label">${WASTE_STREAMS[key].label}</span><span class="tooltip-value">${formatKg(hovered.wasteBreakdown[key])} kg/일</span></div>
-                `)
-                .join('');
-
-            tooltip.innerHTML = `
-                    <div class="tooltip-title"><span>${hovered.type.icon}</span><span>${hovered.name}</span></div>
-                <div class="tooltip-info">
-                    <div class="tooltip-row"><span class="tooltip-label">유형</span><span class="tooltip-value">${hovered.type.label}</span></div>
-                    <div class="tooltip-row"><span class="tooltip-label">거주 인구</span><span class="tooltip-value">${(hovered.residentPopulation || 0).toLocaleString()}명</span></div>
-                    <div class="tooltip-row"><span class="tooltip-label">종사 인구</span><span class="tooltip-value">${(hovered.workerPopulation || 0).toLocaleString()}명</span></div>
-                    <div class="tooltip-row"><span class="tooltip-label">유동 인구</span><span class="tooltip-value">${(hovered.visitorPopulation || 0).toLocaleString()}명</span></div>
-                    <div class="tooltip-divider" style="height: 1px; background: rgba(255,255,255,0.1); margin: 5px 0;"></div>
-                    <div class="tooltip-row"><span class="tooltip-label">거주/종사 폐기물</span><span class="tooltip-value">${formatKg(standingWaste)} kg/일</span></div>
-                    <div class="tooltip-row"><span class="tooltip-label">유동 폐기물</span><span class="tooltip-value">${formatKg(visitorWaste)} kg/일</span></div>
-                    ${specialWaste > 0 ? `<div class="tooltip-row"><span class="tooltip-label">특수 폐기물</span><span class="tooltip-value">${formatKg(specialWaste)} kg/일</span></div>` : ''}
-                    <div class="tooltip-row"><span class="tooltip-label">총 폐기물</span><span class="tooltip-value">${formatKg(hovered.waste)} kg/일</span></div>
-                    ${categoryRows ? `<div class="tooltip-section">배출 카테고리</div>${categoryRows}` : ''}
-                    ${breakdownRows ? `<div class="tooltip-section">세부 폐기물</div>${breakdownRows}` : ''}
-                    <div class="tooltip-row"><span class="tooltip-label">포화도</span><span class="tooltip-value">${((hovered.waste / hovered.capacity) * 100).toFixed(1)}%</span></div>
-                </div>
-            `;
-            positionTooltip(e);
+            renderBuildingTooltip(hovered, e, currentHoveredBuilding !== hovered);
+            currentHoveredBuilding = hovered;
         } else {
             hideTooltip();
             currentHoveredBuilding = null;
@@ -1528,6 +1533,18 @@ function hideTooltip() {
         hideTooltip();
         currentHoveredBuilding = null;
     });
+    city.canvas.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        if (!touch) return;
+        const touched = findBuildingAt(city, touch.clientX, touch.clientY);
+        if (touched) {
+            renderBuildingTooltip(touched, touch, currentHoveredBuilding !== touched);
+            currentHoveredBuilding = touched;
+        } else {
+            hideTooltip();
+            currentHoveredBuilding = null;
+        }
+    }, { passive: true });
 });
 
 window.addEventListener('resize', () => {
