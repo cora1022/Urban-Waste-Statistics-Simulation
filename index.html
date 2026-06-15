@@ -8,7 +8,11 @@
 </head>
 <body>
     <div id="global-controls">
-        <button id="btn-generate-all">1일 폐기물 계산</button>
+        <div class="generate-action needs-generation" id="generate-action">
+            <div class="generate-hint" id="generate-hint" role="status">아직 1일 폐기물 생산 전이에요. 먼저 눌러주세요.</div>
+            <button id="btn-generate-all">1일 폐기물 생산</button>
+        </div>
+        <a class="analysis-link" href="https://cora1022.github.io/Urban-Waste-Calculation/" target="_blank" rel="noopener noreferrer">통계 분석하기</a>
     </div>
 
     <div id="view-controls" aria-label="보기 설정">

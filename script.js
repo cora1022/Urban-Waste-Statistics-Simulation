@@ -96,6 +96,13 @@ const WASTE_CATEGORIES = {
     business: '사업장 일반폐기물'
 };
 
+// --- 자료구조 키 목록 ---
+// 같은 키 배열을 여러 번 만들지 않고, 배열/해시 테이블 기반 알고리즘의 기준 순서로 사용한다.
+const BUILDING_TYPE_KEYS = Object.keys(BUILDING_TYPES);
+const WASTE_STREAM_KEYS = Object.keys(WASTE_STREAMS);
+const WASTE_CATEGORY_KEYS = Object.keys(WASTE_CATEGORIES);
+const RATIO_PRESET_KEYS = Object.keys(RATIO_PRESETS);
+
 const KOREA_WASTE_BENCHMARK = {
     municipalPerCapitaKg: 1.2,
     householdSurveyPerCapitaKg: 0.9506,
@@ -181,13 +188,62 @@ function pickRandom(items) {
     return items[Math.floor(Math.random() * items.length)];
 }
 
+function createZeroTable(keys) {
+    return keys.reduce((table, key) => {
+        table[key] = 0;
+        return table;
+    }, {});
+}
+
+function createHashTable(keys, createValue) {
+    return keys.reduce((table, key) => {
+        table[key] = createValue(key);
+        return table;
+    }, {});
+}
+
+class PrefixSumTable {
+    constructor(keys, getWeight) {
+        this.keys = [];
+        this.prefixSums = [];
+        this.totalWeight = 0;
+
+        keys.forEach(key => {
+            const weight = Math.max(0, Number(getWeight(key)) || 0);
+            if (weight <= 0) return;
+            this.totalWeight += weight;
+            this.keys.push(key);
+            this.prefixSums.push(this.totalWeight);
+        });
+    }
+
+    pick(randomValue = Math.random()) {
+        if (this.totalWeight <= 0 || this.keys.length === 0) return null;
+
+        const target = randomValue * this.totalWeight;
+        let left = 0;
+        let right = this.prefixSums.length - 1;
+
+        while (left < right) {
+            const mid = Math.floor((left + right) / 2);
+            if (target < this.prefixSums[mid]) {
+                right = mid;
+            } else {
+                left = mid + 1;
+            }
+        }
+
+        return this.keys[left];
+    }
+}
+
 function createRandomTypeWeights(excludedPresetKeys = []) {
-    const availablePresets = Object.keys(RATIO_PRESETS).filter(key => !excludedPresetKeys.includes(key));
-    const presetKey = pickRandom(availablePresets.length > 0 ? availablePresets : Object.keys(RATIO_PRESETS));
+    const availablePresets = RATIO_PRESET_KEYS.filter(key => !excludedPresetKeys.includes(key));
+    const presetKey = pickRandom(availablePresets.length > 0 ? availablePresets : RATIO_PRESET_KEYS);
     const source = RATIO_PRESETS[presetKey];
     const weights = {};
 
-    Object.keys(BUILDING_TYPES).forEach(key => {
+    BUILDING_TYPE_KEYS.forEach(key => {
         const base = source[key] || 0;
         if (base <= 0) {
             weights[key] = Math.random() < 0.18 ? randomInt(1, 4) : 0;
@@ -217,17 +273,11 @@ function applyRandomStartupConfig(city, usedLayouts = [], usedPresetKeys = []) {
 }
 
 function createWasteBreakdown() {
-    return Object.keys(WASTE_STREAMS).reduce((acc, key) => {
-        acc[key] = 0;
-        return acc;
-    }, {});
+    return createZeroTable(WASTE_STREAM_KEYS);
 }
 
 function createWasteCategoryBreakdown(materialBreakdown) {
-    const categoryBreakdown = Object.keys(WASTE_CATEGORIES).reduce((acc, key) => {
-        acc[key] = 0;
-        return acc;
-    }, {});
+    const categoryBreakdown = createZeroTable(WASTE_CATEGORY_KEYS);
 
     Object.keys(materialBreakdown || {}).forEach(key => {
         const category = WASTE_STREAMS[key]?.category;
@@ -240,7 +290,7 @@ function createWasteCategoryBreakdown(materialBreakdown) {
 }
 
 function addWasteBreakdown(target, source) {
-    Object.keys(WASTE_STREAMS).forEach(key => {
+    WASTE_STREAM_KEYS.forEach(key => {
         target[key] = (target[key] || 0) + (source?.[key] || 0);
     });
     return target;
@@ -299,8 +349,7 @@ function calculateBuildingPopulation(type, config) {
 }
 
 function estimatePopulationForConfig(config) {
-    const types = Object.keys(BUILDING_TYPES);
-    const totalWeight = types.reduce((sum, key) => sum + (config.typeWeights[key] || 0), 0);
+    const totalWeight = BUILDING_TYPE_KEYS.reduce((sum, key) => sum + (config.typeWeights[key] || 0), 0);
     const buildingCount = config.targetBuildings || 0;
     const populationScale = config.populationScale || 1;
     const workerPopulationScale = config.workerPopulationScale || 1;
@@ -311,7 +360,7 @@ function estimatePopulationForConfig(config) {
         return { residentPop: 0, workerPop: 0, visitorPop: 0, totalPop: 0 };
     }
 
-    const density = types.reduce((acc, key) => {
+    const density = BUILDING_TYPE_KEYS.reduce((acc, key) => {
         const type = BUILDING_TYPES[key];
         const share = (config.typeWeights[key] || 0) / totalWeight;
         if (type === BUILDING_TYPES.RESIDENTIAL) {
@@ -335,15 +384,14 @@ function estimatePopulationForConfig(config) {
 }
 
 function estimateDailyWasteForConfig(config) {
-    const types = Object.keys(BUILDING_TYPES);
-    const totalWeight = types.reduce((sum, key) => sum + (config.typeWeights[key] || 0), 0);
+    const totalWeight = BUILDING_TYPE_KEYS.reduce((sum, key) => sum + (config.typeWeights[key] || 0), 0);
     const buildingCount = config.targetBuildings || 0;
     if (totalWeight <= 0 || buildingCount <= 0) return 0;
 
     const baseConfig = { ...config, wasteScale: 1 };
     const expectedArea = getExpectedBuildingSizeSquared();
 
-    const baseWaste = types.reduce((sum, key) => {
+    const baseWaste = BUILDING_TYPE_KEYS.reduce((sum, key) => {
         const type = BUILDING_TYPES[key];
         const count = buildingCount * (config.typeWeights[key] || 0) / totalWeight;
         const population = calculateBuildingPopulation(type, baseConfig);
@@ -370,8 +418,7 @@ class Building {
         this.waste = 0;
         this.city = city;
         
-        const types = Object.keys(BUILDING_TYPES);
-        const typeKey = types[Math.floor(Math.random() * types.length)];
+        const typeKey = BUILDING_TYPE_KEYS[Math.floor(Math.random() * BUILDING_TYPE_KEYS.length)];
         this.typeKey = typeKey;
         this.type = BUILDING_TYPES[typeKey];
         
@@ -531,6 +578,53 @@ class Vehicle {
 
 // --- 핵심 시뮬레이션 엔진 ---
 
+const ROAD_LAYOUT_FACTORIES = [
+    (w, h) => [
+        {x1: -50, y1: h * 0.2, x2: w + 50, y2: h * 0.8},
+        {x1: w + 50, y1: h * 0.3, x2: -50, y2: h * 0.7},
+        {x1: w * 0.5, y1: -50, x2: w * 0.5, y2: h + 50}
+    ],
+    (w, h) => [
+        {x1: -50, y1: h * 0.5, x2: w + 50, y2: h * 0.5},
+        {x1: w * 0.33, y1: -50, x2: w * 0.33, y2: h + 50},
+        {x1: w * 0.66, y1: -50, x2: w * 0.66, y2: h + 50}
+    ],
+    (w, h) => [
+        {x1: w*0.15, y1: h*0.2, x2: w*0.85, y2: h*0.2},
+        {x1: w*0.85, y1: h*0.2, x2: w*0.85, y2: h*0.8},
+        {x1: w*0.85, y1: h*0.8, x2: w*0.15, y2: h*0.8},
+        {x1: w*0.15, y1: h*0.8, x2: w*0.15, y2: h*0.2}
+    ],
+    (w, h) => [
+        {x1: -50, y1: h * 0.3, x2: w + 50, y2: h * 0.3},
+        {x1: -50, y1: h * 0.7, x2: w + 50, y2: h * 0.7}
+    ],
+    (w, h) => [
+        {x1: w * 0.5, y1: -50, x2: w * 0.5, y2: h + 50},
+        {x1: -50, y1: h * 0.28, x2: w * 0.5, y2: h * 0.28},
+        {x1: w * 0.5, y1: h * 0.48, x2: w + 50, y2: h * 0.48},
+        {x1: -50, y1: h * 0.72, x2: w * 0.5, y2: h * 0.72}
+    ],
+    (w, h) => [
+        {x1: -50, y1: h * 0.5, x2: w + 50, y2: h * 0.5},
+        {x1: w * 0.5, y1: -50, x2: w * 0.5, y2: h + 50},
+        {x1: -50, y1: -20, x2: w + 50, y2: h + 20},
+        {x1: w + 50, y1: -20, x2: -50, y2: h + 20}
+    ],
+    (w, h) => [
+        {x1: w * 0.12, y1: h * 0.18, x2: w * 0.88, y2: h * 0.18},
+        {x1: w * 0.88, y1: h * 0.18, x2: w * 0.88, y2: h * 0.82},
+        {x1: w * 0.88, y1: h * 0.82, x2: w * 0.12, y2: h * 0.82},
+        {x1: w * 0.12, y1: h * 0.82, x2: w * 0.12, y2: h * 0.18},
+        {x1: w * 0.12, y1: h * 0.5, x2: w * 0.88, y2: h * 0.5}
+    ]
+];
+
+function createRoadPaths(layoutIndex, width, height) {
+    const createPaths = ROAD_LAYOUT_FACTORIES[layoutIndex] || ROAD_LAYOUT_FACTORIES[0];
+    return createPaths(width, height);
+}
+
 class CitySimulation {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
@@ -596,64 +690,11 @@ class CitySimulation {
         this.totalVisitorPopDisplay.parentElement.style.cursor = 'help';
         this.totalWasteDisplay.parentElement.style.cursor = 'help';
 
-        const layout = this.config.roadLayout || 0;
-        
-        if (layout === 0) {
-            // 기본 (대각선)
-            this.roadPaths.push({x1: -50, y1: h * 0.2, x2: w + 50, y2: h * 0.8});
-            this.roadPaths.push({x1: w + 50, y1: h * 0.3, x2: -50, y2: h * 0.7});
-            this.roadPaths.push({x1: w * 0.5, y1: -50, x2: w * 0.5, y2: h + 50});
-        } else if (layout === 1) {
-            // 그리드 (격자형)
-            this.roadPaths.push({x1: -50, y1: h * 0.5, x2: w + 50, y2: h * 0.5});
-            this.roadPaths.push({x1: w * 0.33, y1: -50, x2: w * 0.33, y2: h + 50});
-            this.roadPaths.push({x1: w * 0.66, y1: -50, x2: w * 0.66, y2: h + 50});
-        } else if (layout === 2) {
-            // 순환도로
-            this.roadPaths.push({x1: w*0.15, y1: h*0.2, x2: w*0.85, y2: h*0.2});
-            this.roadPaths.push({x1: w*0.85, y1: h*0.2, x2: w*0.85, y2: h*0.8});
-            this.roadPaths.push({x1: w*0.85, y1: h*0.8, x2: w*0.15, y2: h*0.8});
-            this.roadPaths.push({x1: w*0.15, y1: h*0.8, x2: w*0.15, y2: h*0.2});
-        } else if (layout === 3) {
-            // 수평 평행선
-            this.roadPaths.push({x1: -50, y1: h * 0.3, x2: w + 50, y2: h * 0.3});
-            this.roadPaths.push({x1: -50, y1: h * 0.7, x2: w + 50, y2: h * 0.7});
-        } else if (layout === 4) {
-            // 중앙 간선 + 지선
-            this.roadPaths.push({x1: w * 0.5, y1: -50, x2: w * 0.5, y2: h + 50});
-            this.roadPaths.push({x1: -50, y1: h * 0.28, x2: w * 0.5, y2: h * 0.28});
-            this.roadPaths.push({x1: w * 0.5, y1: h * 0.48, x2: w + 50, y2: h * 0.48});
-            this.roadPaths.push({x1: -50, y1: h * 0.72, x2: w * 0.5, y2: h * 0.72});
-        } else if (layout === 5) {
-            // 방사형 교차로
-            this.roadPaths.push({x1: -50, y1: h * 0.5, x2: w + 50, y2: h * 0.5});
-            this.roadPaths.push({x1: w * 0.5, y1: -50, x2: w * 0.5, y2: h + 50});
-            this.roadPaths.push({x1: -50, y1: -20, x2: w + 50, y2: h + 20});
-            this.roadPaths.push({x1: w + 50, y1: -20, x2: -50, y2: h + 20});
-        } else if (layout === 6) {
-            // 외곽 우회 + 내부 연결
-            this.roadPaths.push({x1: w * 0.12, y1: h * 0.18, x2: w * 0.88, y2: h * 0.18});
-            this.roadPaths.push({x1: w * 0.88, y1: h * 0.18, x2: w * 0.88, y2: h * 0.82});
-            this.roadPaths.push({x1: w * 0.88, y1: h * 0.82, x2: w * 0.12, y2: h * 0.82});
-            this.roadPaths.push({x1: w * 0.12, y1: h * 0.82, x2: w * 0.12, y2: h * 0.18});
-            this.roadPaths.push({x1: w * 0.12, y1: h * 0.5, x2: w * 0.88, y2: h * 0.5});
-        }
+        this.roadPaths = createRoadPaths(this.config.roadLayout || 0, w, h);
 
         let attempts = 0;
-        
-        // Weight-based selection logic
-        const getWeightedType = () => {
-            const types = Object.keys(BUILDING_TYPES);
-            const totalWeight = types.reduce((acc, t) => acc + (this.config.typeWeights[t] || 0), 0);
-            if (totalWeight <= 0) return types[0];
-            let rand = Math.random() * totalWeight;
-            for (const t of types) {
-                const weight = this.config.typeWeights[t] || 0;
-                if (rand < weight) return t;
-                rand -= weight;
-            }
-            return types[0];
-        };
+        const buildingTypePicker = new PrefixSumTable(BUILDING_TYPE_KEYS, key => this.config.typeWeights[key] || 0);
+        const getWeightedType = () => buildingTypePicker.pick() || BUILDING_TYPE_KEYS[0];
 
         const sizeRange = getBuildingSizeRange(this.config.targetBuildings);
         const maxPlacementAttempts = Math.max(1500, this.config.targetBuildings * 80);
@@ -661,19 +702,11 @@ class CitySimulation {
             const size = sizeRange.min + Math.random() * (sizeRange.max - sizeRange.min);
             const x = Math.random() * (w - size - 20) + 10;
             const y = Math.random() * (h - size - 20) + 10;
+            const candidate = { x, y, size };
 
-            let overlap = false;
-            for (let road of this.roadPaths) {
-                if (this.distToSegment({x: x+size/2, y: y+size/2}, {x: road.x1, y: road.y1}, {x: road.x2, y: road.y2}) < (this.config.roadWidth/2 + size * sizeRange.roadBufferScale)) {
-                    overlap = true; break;
-                }
-            }
-            if (!overlap) {
-                for (let b of this.buildings) {
-                    const dist = Math.sqrt(Math.pow((b.x + b.w/2) - (x + size/2), 2) + Math.pow((b.y + b.h/2) - (y + size/2), 2));
-                    if (dist < (b.w/2 + size/2 + sizeRange.spacing)) { overlap = true; break; }
-                }
-            }
+            const overlap = this.roadPaths.some(road => this.isTooCloseToRoad(candidate, road, sizeRange))
+                || this.buildings.some(building => this.isTooCloseToBuilding(candidate, building, sizeRange));
+
             if (!overlap) {
                 const b = new Building(x, y, size, this);
                 const forcedType = getWeightedType();
@@ -756,10 +789,16 @@ class CitySimulation {
     }
 
     updateStatsTooltips() {
-        const stats = {};
-        Object.keys(BUILDING_TYPES).forEach(type => {
-            stats[type] = { count: 0, residentPop: 0, workerPop: 0, visitorPop: 0, standingWaste: 0, visitorWaste: 0, specialWaste: 0, totalWaste: 0 };
-        });
+        const stats = createHashTable(BUILDING_TYPE_KEYS, () => ({
+            count: 0,
+            residentPop: 0,
+            workerPop: 0,
+            visitorPop: 0,
+            standingWaste: 0,
+            visitorWaste: 0,
+            specialWaste: 0,
+            totalWaste: 0
+        }));
         const cityWasteBreakdown = createWasteBreakdown();
 
         this.buildings.forEach(b => {
@@ -815,7 +854,7 @@ class CitySimulation {
 
         // 건물 수 툴팁
         setupHeaderTooltip(this.totalBldDisplay, () => "🏙️ 건물 유형별 통계", () => {
-            return Object.keys(BUILDING_TYPES)
+            return BUILDING_TYPE_KEYS
                 .map(k => ({
                     label: BUILDING_TYPES[k].label,
                     value: `${stats[k].count}동`,
@@ -826,7 +865,7 @@ class CitySimulation {
 
         // 거주 인구 툴팁
         setupHeaderTooltip(this.totalResidentPopDisplay, () => "🏠 거주 인구 상세", () => {
-            return Object.keys(BUILDING_TYPES)
+            return BUILDING_TYPE_KEYS
                 .map(k => ({
                     label: BUILDING_TYPES[k].label,
                     value: `${stats[k].residentPop.toLocaleString()}명`,
@@ -837,7 +876,7 @@ class CitySimulation {
 
         // 종사 인구 툴팁
         setupHeaderTooltip(this.totalWorkerPopDisplay, () => "🏢 종사 인구 상세", () => {
-            return Object.keys(BUILDING_TYPES)
+            return BUILDING_TYPE_KEYS
                 .map(k => ({
                     label: BUILDING_TYPES[k].label,
                     value: `${stats[k].workerPop.toLocaleString()}명 (${formatKg(stats[k].standingWaste)}kg/일)`,
@@ -848,7 +887,7 @@ class CitySimulation {
 
         // 유동 인구 툴팁
         setupHeaderTooltip(this.totalVisitorPopDisplay, () => "🏃 유동 인구 상세", () => {
-            return Object.keys(BUILDING_TYPES)
+            return BUILDING_TYPE_KEYS
                 .map(k => ({
                     label: BUILDING_TYPES[k].label,
                     value: `${stats[k].visitorPop.toLocaleString()}명 (${formatKg(stats[k].visitorWaste)}kg/일)`,
@@ -859,7 +898,7 @@ class CitySimulation {
 
         // 폐기물 툴팁
         setupHeaderTooltip(this.totalWasteDisplay, () => "♻️ 1일 폐기물 배출량 상세", () => {
-            const categoryItems = Object.keys(WASTE_CATEGORIES)
+            const categoryItems = WASTE_CATEGORY_KEYS
                 .map(k => ({
                     label: WASTE_CATEGORIES[k],
                     value: `${formatKg(cityCategoryBreakdown[k])}kg/일`,
@@ -867,7 +906,7 @@ class CitySimulation {
                 }))
                 .filter(i => i.show);
 
-            const materialItems = Object.keys(WASTE_STREAMS)
+            const materialItems = WASTE_STREAM_KEYS
                 .map(k => ({
                     label: WASTE_STREAMS[k].label,
                     value: `${formatKg(cityWasteBreakdown[k])}kg/일`,
@@ -875,7 +914,7 @@ class CitySimulation {
                 }))
                 .filter(i => i.show);
 
-            const typeItems = Object.keys(BUILDING_TYPES)
+            const typeItems = BUILDING_TYPE_KEYS
                 .map(k => ({
                     label: BUILDING_TYPES[k].label,
                     value: `${formatKg(stats[k].totalWaste)}kg/일`,
@@ -889,6 +928,24 @@ class CitySimulation {
                 ...(typeItems.length ? [{ kind: 'section', label: '건물 유형별' }, ...typeItems] : [])
             ];
         });
+    }
+
+    isTooCloseToRoad(candidate, road, sizeRange) {
+        const center = {
+            x: candidate.x + candidate.size / 2,
+            y: candidate.y + candidate.size / 2
+        };
+        const roadStart = { x: road.x1, y: road.y1 };
+        const roadEnd = { x: road.x2, y: road.y2 };
+        const limit = this.config.roadWidth / 2 + candidate.size * sizeRange.roadBufferScale;
+        return this.distToSegment(center, roadStart, roadEnd) < limit;
+    }
+
+    isTooCloseToBuilding(candidate, building, sizeRange) {
+        const dx = (building.x + building.w / 2) - (candidate.x + candidate.size / 2);
+        const dy = (building.y + building.h / 2) - (candidate.y + candidate.size / 2);
+        const dist = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+        return dist < (building.w / 2 + candidate.size / 2 + sizeRange.spacing);
     }
 
     distToSegment(p, v, w) {
@@ -993,6 +1050,7 @@ window.onload = () => {
     applyTheme('dark');
     applyRandomStartupConfig(cityLeft, usedStartupLayouts, usedStartupPresets);
     applyRandomStartupConfig(cityRight, usedStartupLayouts, usedStartupPresets);
+    setDailyWasteGenerated(false);
     syncTypeToggleButtons();
     cityLeft.init();
     cityRight.init();
@@ -1023,6 +1081,8 @@ const wasteScaleLabel = document.getElementById('waste-scale-label');
 const wasteScaleStatus = document.getElementById('waste-scale-status');
 const wasteScaleTitle = document.getElementById('waste-scale-title');
 const wasteScaleDesc = document.getElementById('waste-scale-desc');
+const generateAction = document.getElementById('generate-action');
+const generateAllButton = document.getElementById('btn-generate-all');
 const themeToggleButton = document.getElementById('btn-theme-toggle');
 const typeToggleButtons = document.querySelectorAll('.btn-toggle-types');
 const randomRatioButtons = document.querySelectorAll('.btn-random-ratio');
@@ -1061,6 +1121,16 @@ function setCityShowTypes(city, showTypes) {
 function resetCityWaste(city) {
     city.totalCityWaste = 0;
     city.totalWasteDisplay.innerText = '0';
+    setDailyWasteGenerated(false);
+}
+
+function setDailyWasteGenerated(isGenerated) {
+    generateAction.classList.toggle('needs-generation', !isGenerated);
+    if (isGenerated) {
+        generateAllButton.removeAttribute('aria-describedby');
+    } else {
+        generateAllButton.setAttribute('aria-describedby', 'generate-hint');
+    }
 }
 
 function randomizeCityConfig(city) {
@@ -1101,9 +1171,10 @@ function positionTooltip(e) {
 }
 
 // 전역 컨트롤
-document.getElementById('btn-generate-all').onclick = () => {
+generateAllButton.onclick = () => {
     cityLeft.generateWaste();
     cityRight.generateWaste();
+    setDailyWasteGenerated(true);
     updateComparisonBar();
 };
 
@@ -1360,7 +1431,7 @@ presetSelect.onchange = (e) => {
 // 가중치 컨트롤 동적 생성
 function updateRatioUI() {
     ratioControls.innerHTML = '';
-    Object.keys(BUILDING_TYPES).forEach(key => {
+    BUILDING_TYPE_KEYS.forEach(key => {
         const type = BUILDING_TYPES[key];
         const item = document.createElement('div');
         item.className = 'ratio-item';
@@ -1391,13 +1462,14 @@ document.getElementById('btn-reset-city').onclick = () => {
     activeCity.createCity();
     activeCity.totalCityWaste = 0;
     activeCity.totalWasteDisplay.innerText = '0';
+    setDailyWasteGenerated(false);
     modal.style.display = 'none';
 };
 
 document.getElementById('btn-download-csv').onclick = () => {
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-    const categoryKeys = Object.keys(WASTE_CATEGORIES);
-    const materialKeys = Object.keys(WASTE_STREAMS);
+    const categoryKeys = WASTE_CATEGORY_KEYS;
+    const materialKeys = WASTE_STREAM_KEYS;
     const csvHeaders = [
         "도시", "ID", "이름", "유형", "인구기준배율", "종사인구보정", "유동인구보정",
         "거주인구(명)", "종사인구(명)", "유동인구(명)",
@@ -1482,13 +1554,13 @@ function renderBuildingTooltip(building, pointerEvent, shouldResetScroll = false
     const visitorWaste = building.lastVisitorWaste || 0;
     const specialWaste = building.lastSpecialWaste || 0;
     const categoryBreakdown = createWasteCategoryBreakdown(building.wasteBreakdown);
-    const categoryRows = Object.keys(WASTE_CATEGORIES)
+    const categoryRows = WASTE_CATEGORY_KEYS
         .filter(key => (categoryBreakdown[key] || 0) > 0)
         .map(key => `
             <div class="tooltip-row"><span class="tooltip-label">${WASTE_CATEGORIES[key]}</span><span class="tooltip-value">${formatKg(categoryBreakdown[key])} kg/일</span></div>
         `)
         .join('');
-    const breakdownRows = Object.keys(WASTE_STREAMS)
+    const breakdownRows = WASTE_STREAM_KEYS
         .filter(key => (building.wasteBreakdown?.[key] || 0) > 0)
         .map(key => `
             <div class="tooltip-row"><span class="tooltip-label">${WASTE_STREAMS[key].label}</span><span class="tooltip-value">${formatKg(building.wasteBreakdown[key])} kg/일</span></div>
