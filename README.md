@@ -74,11 +74,3 @@
 | 인구 보정 | 비례 스케일링 | `O(n)` |
 | 도시 통계 집계 | 해시 테이블 누적 | `O(n + m)` |
 | 폐기물 세부 배분 | 비율 기반 분배 | `O(m)` |
-
-## 기술 스택
-
-- HTML
-- CSS
-- JavaScript
-- Canvas API
-- GitHub Pages
