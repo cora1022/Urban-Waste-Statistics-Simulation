@@ -4,9 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>도시 폐기물 비교 시뮬레이션</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260815-city-modes">
 </head>
-<body>
+<body class="awaiting-mode">
+    <section id="mode-selection" class="mode-selection" role="dialog" aria-modal="true" aria-labelledby="mode-selection-title" aria-describedby="mode-selection-description" tabindex="-1">
+        <div class="mode-selection-card mode-choice-card">
+            <div class="mode-progress" aria-label="현재 단계: 모드 선택">
+                <span class="is-current">01 모드 선택</span>
+                <span>02 시뮬레이션</span>
+            </div>
+            <div class="mode-selection-heading">
+                <span class="mode-selection-eyebrow">URBAN WASTE SIMULATION</span>
+                <h1 id="mode-selection-title">도시의 하루를<br>비교해보세요</h1>
+                <p id="mode-selection-description">건물 구성과 인구 조건이 달라지면 폐기물 발생량은 어떻게 바뀔까요? 분석할 도시 범위를 먼저 선택하세요.</p>
+            </div>
+            <div class="mode-options" role="group" aria-label="시뮬레이션 모드">
+                <button class="mode-option comparison-option is-selected" type="button" data-select-mode="comparison" aria-pressed="true">
+                    <span class="mode-option-marker" aria-hidden="true"></span>
+                    <span class="mode-option-copy">
+                        <strong>두 도시 비교</strong>
+                        <span>서로 다른 도시 A와 B의 구성과 하루 배출량을 나란히 비교합니다.</span>
+                    </span>
+                    <span class="mode-option-badge">기본</span>
+                </button>
+                <button class="mode-option" type="button" data-select-mode="single" aria-pressed="false">
+                    <span class="mode-option-marker" aria-hidden="true"></span>
+                    <span class="mode-option-copy">
+                        <strong>단일 도시</strong>
+                        <span>한 도시를 넓게 펼쳐 놓고 건물별 배출 구조를 자세히 살펴봅니다.</span>
+                    </span>
+                </button>
+            </div>
+            <button id="btn-mode-continue" class="mode-continue" type="button">
+                <span data-mode-continue-label>시뮬레이션 시작</span>
+                <span aria-hidden="true">→</span>
+            </button>
+            <p class="mode-selection-note">선택한 모드로 시뮬레이션을 바로 시작합니다.</p>
+        </div>
+    </section>
+
     <div id="global-controls">
         <div class="generate-action needs-generation" id="generate-action">
             <div class="generate-hint" id="generate-hint" role="status">아직 1일 폐기물 생산 전이에요. 먼저 눌러주세요.</div>
@@ -19,6 +55,12 @@
         <button class="btn-toggle-types view-btn" data-city="left" aria-pressed="false">A 유형</button>
         <button class="btn-toggle-types view-btn" data-city="right" aria-pressed="false">B 유형</button>
         <button id="btn-theme-toggle" class="view-btn mode-toggle" aria-pressed="false">화이트</button>
+        <button id="btn-mode-select" class="view-btn" type="button">모드 선택</button>
+    </div>
+
+    <div id="type-visibility-guide" class="type-visibility-guide" role="status" aria-live="polite" hidden>
+        <span>보기 설정의 <strong>유형</strong> 버튼을 켜면 건물 색상과 일부 아이콘으로 건물 유형을 확인할 수 있어요.</span>
+        <button id="btn-close-type-guide" type="button" aria-label="건물 유형 안내 닫기">&times;</button>
     </div>
 
     <!-- 비교 바 -->
@@ -240,6 +282,6 @@
     </div>
 
     <div id="tooltip" class="tooltip"></div>
-    <script src="script.js"></script>
+    <script src="script.js?v=20260815-city-modes"></script>
 </body>
 </html>

@@ -650,6 +650,7 @@ class CitySimulation {
         this.totalResidentPopulation = 0;
         this.totalWorkerPopulation = 0;
         this.totalVisitorPopulation = 0;
+        this.isInitialized = false;
         
         this.config = {
             roadWidth: 46,
@@ -670,6 +671,8 @@ class CitySimulation {
 
     init() {
         this.resize();
+        if (this.isInitialized) return;
+        this.isInitialized = true;
         this.animate();
     }
 
@@ -779,11 +782,13 @@ class CitySimulation {
             .filter(group => group.length > 0);
         const selectedBuildings = new Set();
 
+        // 아이콘 예산이 허용하는 범위에서 각 건물 유형의 1위부터 우선 표시한다.
         [...rankedGroups]
             .sort((left, right) => right.length - left.length || compareRank(left[0], right[0]))
             .slice(0, iconBudget)
             .forEach(group => selectedBuildings.add(group[0]));
 
+        // 남은 자리는 유형별 순위 백분율이 높은 건물부터 고르게 채운다.
         const remainingCandidates = rankedGroups.flatMap(group => (
             group.slice(1).map((building, index) => ({
                 building,
@@ -1102,6 +1107,8 @@ class CitySimulation {
 const cityLeft = new CitySimulation('city-left');
 const cityRight = new CitySimulation('city-right');
 let activeCity = null;
+let simulationMode = null;
+let entrySelectedMode = 'comparison';
 
 // Ensure initialization happens after DOM load
 window.onload = () => {
@@ -1112,8 +1119,7 @@ window.onload = () => {
     applyRandomStartupConfig(cityRight, usedStartupLayouts, usedStartupPresets);
     setDailyWasteGenerated(false);
     syncTypeToggleButtons();
-    cityLeft.init();
-    cityRight.init();
+    openModeSelection();
 };
 
 const tooltip = document.getElementById('tooltip');
@@ -1145,11 +1151,80 @@ const generateAction = document.getElementById('generate-action');
 const generateAllButton = document.getElementById('btn-generate-all');
 const themeToggleButton = document.getElementById('btn-theme-toggle');
 const typeToggleButtons = document.querySelectorAll('.btn-toggle-types');
+const typeVisibilityGuide = document.getElementById('type-visibility-guide');
+const typeVisibilityGuideCloseButton = document.getElementById('btn-close-type-guide');
 const randomRatioButtons = document.querySelectorAll('.btn-random-ratio');
+const modeSelection = document.getElementById('mode-selection');
+const modeSelectionButtons = document.querySelectorAll('[data-select-mode]');
+const modeContinueButton = document.getElementById('btn-mode-continue');
+const modeContinueLabel = document.querySelector('[data-mode-continue-label]');
+const modeSelectButton = document.getElementById('btn-mode-select');
 let currentTheme = 'dark';
+let typeGuideDismissed = false;
 
 function getCityByKey(key) {
     return key === 'left' ? cityLeft : cityRight;
+}
+
+function getActiveCities() {
+    return simulationMode === 'single' ? [cityLeft] : [cityLeft, cityRight];
+}
+
+function getCityLabel(city) {
+    if (simulationMode === 'single') return '도시';
+    return city === cityLeft ? '도시 A' : '도시 B';
+}
+
+function syncModeUI() {
+    cityLeft.container.querySelector('.city-label').innerText = simulationMode === 'single' ? '도시' : '도시 A';
+    cityRight.container.querySelector('.city-label').innerText = '도시 B';
+    document.title = simulationMode === 'single'
+        ? '도시 폐기물 시뮬레이션'
+        : '도시 폐기물 비교 시뮬레이션';
+    syncTypeToggleButtons();
+}
+
+function updateModeSelectionUI() {
+    modeSelectionButtons.forEach(button => {
+        const isSelected = button.dataset.selectMode === entrySelectedMode;
+        button.classList.toggle('is-selected', isSelected);
+        button.setAttribute('aria-pressed', String(isSelected));
+    });
+
+    modeContinueLabel.innerText = '시뮬레이션 시작';
+}
+
+function openModeSelection() {
+    modal.style.display = 'none';
+    hideTooltip();
+    entrySelectedMode = simulationMode || entrySelectedMode || 'comparison';
+    updateModeSelectionUI();
+    document.body.classList.add('awaiting-mode');
+    modeSelection.hidden = false;
+    modeSelection.setAttribute('aria-hidden', 'false');
+    window.requestAnimationFrame(() => modeSelection.focus({ preventScroll: true }));
+}
+
+function selectSimulationMode(mode) {
+    if (mode !== 'single' && mode !== 'comparison') return;
+
+    const previousMode = simulationMode;
+    simulationMode = mode;
+    if (previousMode && previousMode !== mode) {
+        [cityLeft, cityRight].forEach(city => resetCityWaste(city));
+    }
+    document.body.dataset.cityMode = mode;
+    document.body.classList.remove('awaiting-mode');
+    modeSelection.hidden = true;
+    modeSelection.setAttribute('aria-hidden', 'true');
+    syncModeUI();
+
+    window.requestAnimationFrame(() => {
+        getActiveCities().forEach(city => city.init());
+        setDailyWasteGenerated(getActiveCities().every(city => city.totalCityWaste > 0));
+        updateComparisonBar();
+        generateAllButton.focus();
+    });
 }
 
 function applyTheme(theme) {
@@ -1163,10 +1238,10 @@ function applyTheme(theme) {
 function syncTypeToggleButtons() {
     typeToggleButtons.forEach(button => {
         const city = getCityByKey(button.dataset.city);
-        const label = button.dataset.city === 'left' ? 'A' : 'B';
+        const label = simulationMode === 'single' ? '' : (button.dataset.city === 'left' ? 'A ' : 'B ');
         button.classList.toggle('is-active', city.config.showTypes);
         button.setAttribute('aria-pressed', String(city.config.showTypes));
-        button.innerText = city.config.showTypes ? `${label} 숨김` : `${label} 유형`;
+        button.innerText = city.config.showTypes ? `${label}숨김` : `${label}유형`;
     });
 }
 
@@ -1176,11 +1251,35 @@ function setCityShowTypes(city, showTypes) {
         document.getElementById('show-types').checked = showTypes;
     }
     syncTypeToggleButtons();
+    if (getActiveCities().every(active => active.config.showTypes)) {
+        hideTypeVisibilityGuide();
+    } else if (getActiveCities().every(active => active.totalCityWaste > 0)) {
+        showTypeVisibilityGuideIfNeeded();
+    }
+}
+
+function hideTypeVisibilityGuide() {
+    typeVisibilityGuide.hidden = true;
+}
+
+function showTypeVisibilityGuideIfNeeded() {
+    const hasHiddenTypes = getActiveCities().some(city => !city.config.showTypes);
+    if (!typeGuideDismissed && hasHiddenTypes) {
+        typeVisibilityGuide.hidden = false;
+    }
 }
 
 function resetCityWaste(city) {
     city.totalCityWaste = 0;
     city.totalWasteDisplay.innerText = '0';
+    city.buildings.forEach(building => {
+        building.waste = 0;
+        building.lastStandingWaste = 0;
+        building.lastVisitorWaste = 0;
+        building.lastSpecialWaste = 0;
+        building.wasteBreakdown = createWasteBreakdown();
+    });
+    city.updateStatsTooltips();
     setDailyWasteGenerated(false);
 }
 
@@ -1190,6 +1289,7 @@ function setDailyWasteGenerated(isGenerated) {
         generateAllButton.removeAttribute('aria-describedby');
     } else {
         generateAllButton.setAttribute('aria-describedby', 'generate-hint');
+        hideTypeVisibilityGuide();
     }
 }
 
@@ -1232,15 +1332,30 @@ function positionTooltip(e) {
 
 // 전역 컨트롤
 generateAllButton.onclick = () => {
-    cityLeft.generateWaste();
-    cityRight.generateWaste();
+    getActiveCities().forEach(city => city.generateWaste());
     setDailyWasteGenerated(true);
     updateComparisonBar();
+    showTypeVisibilityGuideIfNeeded();
+};
+
+typeVisibilityGuideCloseButton.onclick = () => {
+    typeGuideDismissed = true;
+    hideTypeVisibilityGuide();
 };
 
 themeToggleButton.onclick = () => {
     applyTheme(currentTheme === 'light' ? 'dark' : 'light');
 };
+
+modeSelectionButtons.forEach(button => {
+    button.onclick = () => {
+        entrySelectedMode = button.dataset.selectMode;
+        updateModeSelectionUI();
+    };
+});
+
+modeContinueButton.onclick = () => selectSimulationMode(entrySelectedMode);
+modeSelectButton.onclick = openModeSelection;
 
 typeToggleButtons.forEach(button => {
     button.onclick = (e) => {
@@ -1257,6 +1372,8 @@ randomRatioButtons.forEach(button => {
 });
 
 function updateComparisonBar() {
+    if (simulationMode !== 'comparison') return;
+
     const total = cityLeft.totalCityWaste + cityRight.totalCityWaste;
     const barLeft = document.getElementById('bar-left');
     const barRight = document.getElementById('bar-right');
@@ -1436,7 +1553,7 @@ document.querySelectorAll('.btn-settings').forEach(btn => {
         const target = e.currentTarget.dataset.city;
         activeCity = (target === 'left') ? cityLeft : cityRight;
         
-        document.getElementById('modal-title').innerText = `도시 ${target === 'left' ? 'A' : 'B'} 설정`;
+        document.getElementById('modal-title').innerText = `${getCityLabel(activeCity)} 설정`;
         document.getElementById('show-types').checked = activeCity.config.showTypes;
         buildingCountRange.value = activeCity.config.targetBuildings;
         buildingCountNumber.value = activeCity.config.targetBuildings;
@@ -1523,11 +1640,12 @@ document.getElementById('btn-reset-city').onclick = () => {
     activeCity.totalCityWaste = 0;
     activeCity.totalWasteDisplay.innerText = '0';
     setDailyWasteGenerated(false);
+    updateComparisonBar();
     modal.style.display = 'none';
 };
 
 document.getElementById('btn-download-csv').onclick = () => {
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
     const categoryKeys = WASTE_CATEGORY_KEYS;
     const materialKeys = WASTE_STREAM_KEYS;
     const csvHeaders = [
@@ -1541,7 +1659,6 @@ document.getElementById('btn-download-csv').onclick = () => {
     csvContent += csvHeaders.join(",") + "\n";
 
     const csvCell = (value) => `"${String(value).replace(/"/g, '""')}"`;
-    
     const exportData = (city, label) => {
         city.buildings.forEach((b, i) => {
             const breakdown = b.wasteBreakdown || createWasteBreakdown();
@@ -1569,13 +1686,12 @@ document.getElementById('btn-download-csv').onclick = () => {
         });
     };
 
-    exportData(cityLeft, "도시 A");
-    exportData(cityRight, "도시 B");
+    getActiveCities().forEach(city => exportData(city, getCityLabel(city)));
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `urban_comparison_stats_${new Date().getTime()}.csv`);
+    link.setAttribute("download", `urban_${simulationMode}_stats_${new Date().getTime()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1680,6 +1796,6 @@ function renderBuildingTooltip(building, pointerEvent, shouldResetScroll = false
 });
 
 window.addEventListener('resize', () => {
-    cityLeft.resize();
-    cityRight.resize();
+    if (!simulationMode) return;
+    getActiveCities().forEach(city => city.resize());
 });
