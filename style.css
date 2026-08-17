@@ -16,11 +16,34 @@ body {
     position: fixed;
     inset: 0;
     z-index: 1000;
-    display: grid;
-    place-items: center;
-    padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: clamp(32px, 5vw, 84px);
     overflow-y: auto;
-    background: #080810;
+    isolation: isolate;
+    background: #08070f;
+}
+
+.mode-selection::before,
+.mode-selection::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.mode-selection::before {
+    z-index: 0;
+    background: url("./assets/mode-city-background-v15-large-cars-avenue.png") center center / cover no-repeat;
+    filter: brightness(0.78) saturate(0.94) contrast(1.05);
+}
+
+.mode-selection::after {
+    z-index: 1;
+    background:
+        linear-gradient(90deg, rgba(7, 7, 15, 0.98) 0%, rgba(7, 7, 15, 0.9) 31%, rgba(7, 7, 15, 0.42) 53%, rgba(7, 7, 15, 0.04) 76%),
+        linear-gradient(180deg, rgba(7, 7, 15, 0.18), rgba(7, 7, 15, 0.06) 56%, rgba(7, 7, 15, 0.58));
 }
 
 .mode-selection,
@@ -37,111 +60,188 @@ body {
 }
 
 .mode-selection-card {
-    width: min(720px, 100%);
-    padding: clamp(28px, 5vw, 48px);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 20px;
-    background: rgba(18, 18, 34, 0.96);
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.38);
+    position: relative;
+    z-index: 2;
+    width: min(560px, 46vw);
+    padding: 0;
+}
+
+.mode-selection-heading {
+    max-width: 540px;
+    margin: clamp(30px, 5vh, 58px) 0 clamp(24px, 4vh, 36px);
+    text-align: left;
+}
+
+.mode-selection-eyebrow {
+    color: #6ed8f2;
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.2em;
+}
+
+.mode-selection h1 {
+    margin: 14px 0 18px;
+    color: #fff;
+    font-size: clamp(2.5rem, 4.2vw, 4.4rem);
+    font-weight: 760;
+    line-height: 1.03;
+    letter-spacing: -0.055em;
+}
+
+.mode-selection-heading p {
+    margin: 0;
+    max-width: 500px;
+    color: #b7bac7;
+    font-size: clamp(0.9rem, 1.2vw, 1.02rem);
+    line-height: 1.72;
 }
 
 .mode-progress {
     display: flex;
-    gap: 18px;
-    color: rgba(255, 255, 255, 0.38);
-    font-size: 0.7rem;
+    align-items: center;
+    gap: 20px;
+    color: rgba(226, 229, 239, 0.35);
+    font-size: 0.68rem;
     font-weight: 800;
+    letter-spacing: 0.08em;
 }
 
-.mode-progress .is-current,
-.mode-selection-eyebrow {
-    color: #4cc9f0;
+.mode-progress span {
+    position: relative;
 }
 
-.mode-selection-heading {
-    margin: 28px 0;
+.mode-progress span + span::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: calc(100% + 7px);
+    width: 6px;
+    height: 1px;
+    background: currentColor;
 }
 
-.mode-selection-eyebrow {
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.15em;
-}
-
-.mode-selection h1 {
-    margin: 12px 0;
-    color: #fff;
-    font-size: clamp(2rem, 5vw, 3.4rem);
-    line-height: 1.08;
-}
-
-.mode-selection-heading p,
-.mode-selection-note {
-    color: #b5b8c4;
-    line-height: 1.6;
+.mode-progress .is-current {
+    color: #f2f5fa;
 }
 
 .mode-options {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    grid-template-columns: 1fr;
+    gap: 10px;
 }
 
 .mode-option {
-    min-height: 120px;
-    padding: 18px;
-    align-items: flex-start;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.045);
-    color: #fff;
+    position: relative;
+    width: 100%;
+    min-height: 92px;
+    padding: 17px 18px;
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid rgba(226, 231, 241, 0.12);
+    border-radius: 12px;
+    background: rgba(17, 18, 30, 0.66);
+    color: #eef4ff;
     text-align: left;
+    backdrop-filter: blur(10px);
+    transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.mode-option:hover,
+.mode-option:focus-visible {
+    border-color: rgba(110, 216, 242, 0.56);
+    background: rgba(26, 28, 44, 0.86);
+    outline: none;
+    transform: translateX(3px);
 }
 
 .mode-option.is-selected {
-    border-color: #4cc9f0;
-    background: rgba(76, 201, 240, 0.12);
+    border-color: rgba(76, 201, 240, 0.78);
+    background: linear-gradient(100deg, rgba(29, 63, 92, 0.84), rgba(21, 25, 42, 0.76));
+    box-shadow: inset 3px 0 #4cc9f0, 0 10px 30px rgba(0, 0, 0, 0.18);
 }
 
 .mode-option-marker {
-    width: 12px;
-    height: 12px;
-    border: 1px solid currentColor;
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(231, 236, 245, 0.38);
     border-radius: 50%;
+    box-shadow: inset 0 0 0 3px rgba(7, 7, 15, 0.8);
+}
+
+.mode-option.is-selected .mode-option-marker {
+    border-color: #8be5fb;
+    background: #4cc9f0;
 }
 
 .mode-option-copy {
     display: grid;
-    gap: 6px;
+    gap: 4px;
+}
+
+.mode-option-copy strong {
+    color: #fff;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
 }
 
 .mode-option-copy > span {
     color: #aeb4c1;
-    font-size: 0.8rem;
+    font-size: 0.79rem;
+    font-weight: 500;
     line-height: 1.5;
 }
 
 .mode-option-badge {
-    margin-left: auto;
-    color: #4cc9f0;
-    font-size: 0.68rem;
+    padding: 4px 7px;
+    border-radius: 4px;
+    background: rgba(76, 201, 240, 0.15);
+    color: #8be5fb;
+    font-size: 0.63rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
 }
 
 .mode-continue {
     width: 100%;
-    margin-top: 14px;
+    min-height: 52px;
+    margin-top: 16px;
+    padding: 0 20px;
     justify-content: space-between;
-    padding: 13px 18px;
+    border: 1px solid rgba(122, 223, 248, 0.35);
     border-radius: 10px;
+    background: linear-gradient(120deg, #4361ee, #3bb9dc);
+    box-shadow: 0 14px 30px rgba(38, 113, 193, 0.28);
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.mode-continue:hover,
+.mode-continue:focus-visible {
+    background: linear-gradient(120deg, #4d6bf2, #4cc9f0);
+    outline: 2px solid rgba(145, 229, 250, 0.62);
+    outline-offset: 3px;
 }
 
 .mode-selection-note {
-    margin: 10px 0 0;
-    font-size: 0.74rem;
+    margin: 11px 0 0;
+    color: rgba(205, 211, 222, 0.54);
+    font-size: 0.72rem;
     text-align: center;
 }
 
 body.awaiting-mode > :not(.mode-selection):not(script) {
     visibility: hidden;
+}
+
+@media (max-height: 800px) and (min-width: 701px) {
+    .mode-selection {
+        padding-top: 34px;
+        padding-bottom: 34px;
+    }
+
 }
 
 body[data-city-mode="single"] #city-right,
