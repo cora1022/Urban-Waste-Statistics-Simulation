@@ -670,17 +670,24 @@ class CitySimulation {
     }
 
     init() {
-        this.resize();
         if (this.isInitialized) return;
+        this.resize();
         this.isInitialized = true;
         this.animate();
     }
 
     resize() {
         const rect = this.container.getBoundingClientRect();
-        this.canvas.width = rect.width;
-        this.canvas.height = rect.height;
+        const nextWidth = Math.round(rect.width);
+        const nextHeight = Math.round(rect.height);
+        if (this.canvas.width === nextWidth && this.canvas.height === nextHeight && this.buildings.length > 0) {
+            return false;
+        }
+
+        this.canvas.width = nextWidth;
+        this.canvas.height = nextHeight;
         this.createCity();
+        return true;
     }
 
     createCity() {
@@ -1166,6 +1173,7 @@ const modeContinueLabel = document.querySelector('[data-mode-continue-label]');
 const modeSelectButton = document.getElementById('btn-mode-select');
 let currentTheme = 'dark';
 let typeGuideDismissed = false;
+let downloadModalReturnFocus = null;
 
 function getCityByKey(key) {
     return key === 'left' ? cityLeft : cityRight;
@@ -1215,8 +1223,9 @@ function selectSimulationMode(mode) {
     if (mode !== 'single' && mode !== 'comparison') return;
 
     const previousMode = simulationMode;
+    const modeChanged = Boolean(previousMode && previousMode !== mode);
     simulationMode = mode;
-    if (previousMode && previousMode !== mode) {
+    if (modeChanged) {
         [cityLeft, cityRight].forEach(city => resetCityWaste(city));
     }
     document.body.dataset.cityMode = mode;
@@ -1226,7 +1235,13 @@ function selectSimulationMode(mode) {
     syncModeUI();
 
     window.requestAnimationFrame(() => {
-        getActiveCities().forEach(city => city.init());
+        getActiveCities().forEach(city => {
+            if (!city.isInitialized) {
+                city.init();
+            } else if (modeChanged) {
+                city.resize();
+            }
+        });
         setDailyWasteGenerated(getActiveCities().every(city => city.totalCityWaste > 0));
         updateComparisonBar();
         generateAllButton.focus();
@@ -1654,15 +1669,43 @@ document.getElementById('btn-reset-city').onclick = () => {
 };
 
 function openDownloadModal() {
+    downloadModalReturnFocus = document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : downloadButton;
     downloadModal.style.display = 'block';
     downloadModal.setAttribute('aria-hidden', 'false');
-    window.requestAnimationFrame(() => downloadModal.querySelector('input:checked').focus());
+    window.requestAnimationFrame(() => downloadModal.querySelector('input:checked')?.focus());
 }
 
 function closeDownloadModal() {
     if (!downloadModal) return;
+    const wasOpen = downloadModal.style.display === 'block';
     downloadModal.style.display = 'none';
     downloadModal.setAttribute('aria-hidden', 'true');
+    if (wasOpen) {
+        const returnFocus = downloadModalReturnFocus;
+        downloadModalReturnFocus = null;
+        window.requestAnimationFrame(() => returnFocus?.focus());
+    }
+}
+
+function trapDownloadModalFocus(event) {
+    const focusableElements = [...downloadModal.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    )].filter(element => element.getClientRects().length > 0);
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+    const activeElement = document.activeElement;
+
+    if (event.shiftKey && (activeElement === firstElement || !downloadModal.contains(activeElement))) {
+        event.preventDefault();
+        lastElement.focus();
+    } else if (!event.shiftKey && (activeElement === lastElement || !downloadModal.contains(activeElement))) {
+        event.preventDefault();
+        firstElement.focus();
+    }
 }
 
 function getBuildingTotalPopulation(building) {
@@ -1774,10 +1817,17 @@ downloadForm.onsubmit = (event) => {
 };
 
 document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
     if (downloadModal.style.display === 'block') {
-        closeDownloadModal();
-    } else if (modal.style.display === 'block') {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeDownloadModal();
+        } else if (event.key === 'Tab') {
+            trapDownloadModalFocus(event);
+        }
+        return;
+    }
+
+    if (event.key === 'Escape' && modal.style.display === 'block') {
         modal.style.display = 'none';
     }
 });
@@ -1882,5 +1932,12 @@ function renderBuildingTooltip(building, pointerEvent, shouldResetScroll = false
 
 window.addEventListener('resize', () => {
     if (!simulationMode) return;
-    getActiveCities().forEach(city => city.resize());
+    let cityWasRebuilt = false;
+    getActiveCities().forEach(city => {
+        if (city.resize()) {
+            resetCityWaste(city);
+            cityWasRebuilt = true;
+        }
+    });
+    if (cityWasRebuilt) updateComparisonBar();
 });
