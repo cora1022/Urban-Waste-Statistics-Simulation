@@ -1125,6 +1125,11 @@ window.onload = () => {
 const tooltip = document.getElementById('tooltip');
 const modal = document.getElementById('settings-modal');
 const closeBtn = document.querySelector('.close-btn');
+const downloadModal = document.getElementById('download-modal');
+const downloadForm = document.getElementById('download-form');
+const downloadButton = document.getElementById('btn-download-stats');
+const downloadCloseButton = document.getElementById('btn-close-download');
+const downloadCancelButton = document.getElementById('btn-cancel-download');
 const ratioControls = document.getElementById('ratio-controls');
 const buildingCountRange = document.getElementById('building-count');
 const buildingCountNumber = document.getElementById('building-count-number');
@@ -1196,6 +1201,7 @@ function updateModeSelectionUI() {
 
 function openModeSelection() {
     modal.style.display = 'none';
+    closeDownloadModal();
     hideTooltip();
     entrySelectedMode = simulationMode || entrySelectedMode || 'comparison';
     updateModeSelectionUI();
@@ -1571,7 +1577,10 @@ document.querySelectorAll('.btn-settings').forEach(btn => {
 });
 
 closeBtn.onclick = () => modal.style.display = 'none';
-window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+window.onclick = (e) => {
+    if (e.target === modal) modal.style.display = 'none';
+    if (e.target === downloadModal) closeDownloadModal();
+};
 
 // 설정 변경 적용
 document.getElementById('show-types').onchange = (e) => setCityShowTypes(activeCity, e.target.checked);
@@ -1644,8 +1653,65 @@ document.getElementById('btn-reset-city').onclick = () => {
     modal.style.display = 'none';
 };
 
-document.getElementById('btn-download-csv').onclick = () => {
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+function openDownloadModal() {
+    downloadModal.style.display = 'block';
+    downloadModal.setAttribute('aria-hidden', 'false');
+    window.requestAnimationFrame(() => downloadModal.querySelector('input:checked').focus());
+}
+
+function closeDownloadModal() {
+    if (!downloadModal) return;
+    downloadModal.style.display = 'none';
+    downloadModal.setAttribute('aria-hidden', 'true');
+}
+
+function getBuildingTotalPopulation(building) {
+    return (building.residentPopulation || 0)
+        + (building.workerPopulation || 0)
+        + (building.visitorPopulation || 0);
+}
+
+function getSortedExportRows(sortKey) {
+    const typeOrder = new Map(BUILDING_TYPE_KEYS.map((key, index) => [key, index]));
+    const rows = getActiveCities().flatMap((city, cityIndex) => (
+        city.buildings.map((building, buildingIndex) => ({
+            city,
+            cityIndex,
+            cityLabel: getCityLabel(city),
+            building,
+            buildingIndex
+        }))
+    ));
+    const compareCity = (left, right) => left.cityIndex - right.cityIndex;
+    const compareWaste = (left, right) => (right.building.waste || 0) - (left.building.waste || 0);
+    const comparePopulation = (left, right) => getBuildingTotalPopulation(right.building) - getBuildingTotalPopulation(left.building);
+    const compareName = (left, right) => left.building.name.localeCompare(right.building.name, 'ko');
+    const compareOriginalIndex = (left, right) => left.buildingIndex - right.buildingIndex;
+
+    const sortComparators = {
+        type: (left, right) => compareCity(left, right)
+            || (typeOrder.get(left.building.typeKey) ?? Number.MAX_SAFE_INTEGER) - (typeOrder.get(right.building.typeKey) ?? Number.MAX_SAFE_INTEGER)
+            || compareWaste(left, right)
+            || comparePopulation(left, right)
+            || compareName(left, right),
+        waste: (left, right) => compareCity(left, right)
+            || compareWaste(left, right)
+            || comparePopulation(left, right)
+            || compareName(left, right),
+        population: (left, right) => compareCity(left, right)
+            || comparePopulation(left, right)
+            || compareWaste(left, right)
+            || compareName(left, right),
+        name: (left, right) => compareCity(left, right)
+            || compareName(left, right)
+            || compareOriginalIndex(left, right)
+    };
+
+    return rows.sort(sortComparators[sortKey] || sortComparators.type);
+}
+
+function downloadStatistics(sortKey) {
+    const csvRows = [];
     const categoryKeys = WASTE_CATEGORY_KEYS;
     const materialKeys = WASTE_STREAM_KEYS;
     const csvHeaders = [
@@ -1656,46 +1722,65 @@ document.getElementById('btn-download-csv').onclick = () => {
         ...materialKeys.map(key => `${WASTE_STREAMS[key].label}(kg/일)`),
         "임시보관용량(kg)"
     ];
-    csvContent += csvHeaders.join(",") + "\n";
+    csvRows.push(csvHeaders);
 
     const csvCell = (value) => `"${String(value).replace(/"/g, '""')}"`;
-    const exportData = (city, label) => {
-        city.buildings.forEach((b, i) => {
-            const breakdown = b.wasteBreakdown || createWasteBreakdown();
-            const categoryBreakdown = createWasteCategoryBreakdown(breakdown);
-            const row = [
-                label,
-                i + 1,
-                b.name,
-                b.type.label,
-                city.config.populationScale || 1,
-                city.config.workerPopulationScale || 1,
-                city.config.floatPopulationScale || 1,
-                b.residentPopulation,
-                b.workerPopulation,
-                b.visitorPopulation,
-                (b.type.workerWasteRate || 0).toFixed(2),
-                (b.type.visitorWasteRate || 0).toFixed(2),
-                Math.round(b.lastSpecialWaste || 0),
-                Math.round(b.waste),
-                ...categoryKeys.map(key => Math.round(categoryBreakdown[key] || 0)),
-                ...materialKeys.map(key => Math.round(breakdown[key] || 0)),
-                Math.round(b.capacity)
-            ];
-            csvContent += row.map(csvCell).join(",") + "\n";
-        });
-    };
+    getSortedExportRows(sortKey).forEach(({ city, cityLabel, building: b, buildingIndex }) => {
+        const breakdown = b.wasteBreakdown || createWasteBreakdown();
+        const categoryBreakdown = createWasteCategoryBreakdown(breakdown);
+        csvRows.push([
+            cityLabel,
+            buildingIndex + 1,
+            b.name,
+            b.type.label,
+            city.config.populationScale || 1,
+            city.config.workerPopulationScale || 1,
+            city.config.floatPopulationScale || 1,
+            b.residentPopulation,
+            b.workerPopulation,
+            b.visitorPopulation,
+            (b.type.workerWasteRate || 0).toFixed(2),
+            (b.type.visitorWasteRate || 0).toFixed(2),
+            Math.round(b.lastSpecialWaste || 0),
+            Math.round(b.waste),
+            ...categoryKeys.map(key => Math.round(categoryBreakdown[key] || 0)),
+            ...materialKeys.map(key => Math.round(breakdown[key] || 0)),
+            Math.round(b.capacity)
+        ]);
+    });
 
-    getActiveCities().forEach(city => exportData(city, getCityLabel(city)));
-
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = `\uFEFF${csvRows.map(row => row.map(csvCell).join(',')).join('\n')}`;
+    const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const downloadUrl = URL.createObjectURL(csvBlob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `urban_${simulationMode}_stats_${new Date().getTime()}.csv`);
+    const modeLabel = simulationMode === 'single' ? 'single' : 'comparison';
+    const dateLabel = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+    link.setAttribute("href", downloadUrl);
+    link.setAttribute("download", `urban_waste_${modeLabel}_${sortKey}_${dateLabel}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+}
+
+downloadButton.onclick = openDownloadModal;
+downloadCloseButton.onclick = closeDownloadModal;
+downloadCancelButton.onclick = closeDownloadModal;
+downloadForm.onsubmit = (event) => {
+    event.preventDefault();
+    const sortKey = new FormData(downloadForm).get('download-sort') || 'type';
+    downloadStatistics(sortKey);
+    closeDownloadModal();
 };
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (downloadModal.style.display === 'block') {
+        closeDownloadModal();
+    } else if (modal.style.display === 'block') {
+        modal.style.display = 'none';
+    }
+});
 
 let isTooltipHovered = false;
 tooltip.addEventListener('mouseenter', () => { isTooltipHovered = true; });

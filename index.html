@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>도시 폐기물 비교 시뮬레이션</title>
-    <link rel="stylesheet" href="style.css?v=20260815-city-modes">
+    <link rel="stylesheet" href="style.css?v=20260815-mode-export">
 </head>
 <body class="awaiting-mode">
     <section id="mode-selection" class="mode-selection" role="dialog" aria-modal="true" aria-labelledby="mode-selection-title" aria-describedby="mode-selection-description" tabindex="-1">
@@ -48,7 +48,7 @@
             <div class="generate-hint" id="generate-hint" role="status">아직 1일 폐기물 생산 전이에요. 먼저 눌러주세요.</div>
             <button id="btn-generate-all">1일 폐기물 생산</button>
         </div>
-        <a class="analysis-link" href="https://cora1022.github.io/Urban-Waste-Calculation/" target="_blank" rel="noopener noreferrer">통계 분석하기</a>
+        <button id="btn-download-stats" class="secondary-btn" type="button">통계 다운로드</button>
     </div>
 
     <div id="view-controls" aria-label="보기 설정">
@@ -273,15 +273,64 @@
                     </div>
                 </div>
                 <div class="setting-group">
-                    <label>데이터 및 제어</label>
-                    <button id="btn-download-csv" class="secondary-btn">📊 통계 CSV 다운로드</button>
+                    <label>도시 제어</label>
                     <button id="btn-reset-city">🏙️ 도시 재구성</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="download-modal" class="modal download-modal" role="dialog" aria-modal="true" aria-labelledby="download-modal-title" aria-describedby="download-modal-description" aria-hidden="true">
+        <div class="modal-content download-modal-content">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-eyebrow">STATISTICS EXPORT</span>
+                    <h2 id="download-modal-title">통계 정렬 방식 선택</h2>
+                </div>
+                <button id="btn-close-download" class="close-btn" type="button" aria-label="통계 다운로드 창 닫기">&times;</button>
+            </div>
+            <form id="download-form" class="download-form">
+                <p id="download-modal-description">선택한 기준으로 건물 통계를 정렬해 CSV 파일로 저장합니다. 두 도시 모드에서는 도시별로 나누어 정렬됩니다.</p>
+                <fieldset class="download-options">
+                    <legend>정렬 기준</legend>
+                    <label class="download-option">
+                        <input type="radio" name="download-sort" value="type" checked>
+                        <span>
+                            <strong>유형별 묶음</strong>
+                            <small>같은 건물 유형끼리 묶고, 유형 안에서는 폐기물 발생량이 많은 순으로 정렬</small>
+                        </span>
+                    </label>
+                    <label class="download-option">
+                        <input type="radio" name="download-sort" value="waste">
+                        <span>
+                            <strong>폐기물 발생량순</strong>
+                            <small>건물 유형과 관계없이 하루 폐기물 발생량이 많은 건물부터 정렬</small>
+                        </span>
+                    </label>
+                    <label class="download-option">
+                        <input type="radio" name="download-sort" value="population">
+                        <span>
+                            <strong>전체 인구순</strong>
+                            <small>거주·종사·유동 인구를 합산해 인구가 많은 건물부터 정렬</small>
+                        </span>
+                    </label>
+                    <label class="download-option">
+                        <input type="radio" name="download-sort" value="name">
+                        <span>
+                            <strong>건물 이름순</strong>
+                            <small>건물 이름을 가나다순으로 정렬</small>
+                        </span>
+                    </label>
+                </fieldset>
+                <div class="download-actions">
+                    <button id="btn-cancel-download" class="download-cancel" type="button">취소</button>
+                    <button class="download-confirm" type="submit">CSV 파일로 저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="tooltip" class="tooltip"></div>
-    <script src="script.js?v=20260815-city-modes"></script>
+    <script src="script.js?v=20260815-mode-export"></script>
 </body>
 </html>
