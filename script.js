@@ -13,6 +13,7 @@ const RATIO_PRESETS = {
 };
 
 const ROAD_LAYOUT_COUNT = 7;
+const TYPE_ICON_DISPLAY_RATIO = 0.2;
 
 const NAME_PREFIXES = ['푸른', '빛나는', '오래된', '중앙', '강변', '숲속', '행복한', '스마트', '미래', '평화'];
 const NAME_SUFFIXES = {
@@ -417,6 +418,7 @@ class Building {
         this.h = size;
         this.waste = 0;
         this.city = city;
+        this.showTypeIcon = false;
         
         const typeKey = BUILDING_TYPE_KEYS[Math.floor(Math.random() * BUILDING_TYPE_KEYS.length)];
         this.typeKey = typeKey;
@@ -501,27 +503,32 @@ class Building {
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        if (this.city.config.showTypes && this.w > 40) {
+        if (this.city.config.showTypes && this.showTypeIcon) {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = '12px Segoe UI';
+            ctx.font = `${clamp(this.w * 0.32, 9, 15)}px Segoe UI`;
             ctx.textAlign = 'center';
             ctx.fillText(this.type.icon, this.x + this.w / 2, this.y + this.h / 2 + 4);
         }
 
         if (this.waste > 0) {
             const fillPercent = this.waste / this.capacity;
-            const barW = this.w * 0.7;
-            const bx = this.x + (this.w - barW) / 2;
-            const by = this.y + this.h * 0.8;
-            ctx.fillStyle = 'rgba(0,0,0,0.4)';
-            ctx.fillRect(bx, by, barW, 3);
             let color = '#00f2fe';
             if (fillPercent > 0.8) color = '#ff0844';
             else if (fillPercent > 0.5) color = '#f9d423';
+
+            const dotRadius = clamp(this.w * 0.09, 2.8, 5);
+            const dotX = this.x + dotRadius + 3;
+            const dotY = this.y + this.h - dotRadius - 3;
             ctx.fillStyle = color;
-            ctx.shadowBlur = 6;
+            ctx.shadowBlur = 8;
             ctx.shadowColor = color;
-            ctx.fillRect(bx, by, barW * fillPercent, 3);
+            ctx.beginPath();
+            ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
         }
         ctx.restore();
     }
@@ -733,6 +740,7 @@ class CitySimulation {
         }
 
         this.normalizePopulationToEstimate();
+        this.assignTypeIconVisibility();
         
         this.totalResidentPopulation = this.buildings.reduce((sum, b) => sum + (b.residentPopulation || 0), 0);
         this.totalWorkerPopulation = this.buildings.reduce((sum, b) => sum + (b.workerPopulation || 0), 0);
@@ -743,6 +751,57 @@ class CitySimulation {
         this.totalBldDisplay.innerText = this.buildings.length;
 
         this.updateStatsTooltips();
+    }
+
+    assignTypeIconVisibility() {
+        this.buildings.forEach(building => {
+            building.showTypeIcon = false;
+        });
+
+        const iconBudget = Math.round(this.buildings.length * TYPE_ICON_DISPLAY_RATIO);
+        if (iconBudget === 0) return;
+
+        const rankScore = building => {
+            const dailyWaste = building.waste > 0 ? building.waste : building.baseDailyWaste;
+            const totalPopulation = (building.residentPopulation || 0) + (building.workerPopulation || 0) + (building.visitorPopulation || 0);
+            return { dailyWaste, totalPopulation, area: building.w * building.h };
+        };
+        const compareRank = (left, right) => {
+            const leftScore = rankScore(left);
+            const rightScore = rankScore(right);
+            return rightScore.dailyWaste - leftScore.dailyWaste
+                || rightScore.totalPopulation - leftScore.totalPopulation
+                || rightScore.area - leftScore.area;
+        };
+
+        const rankedGroups = BUILDING_TYPE_KEYS
+            .map(typeKey => this.buildings.filter(building => building.typeKey === typeKey).sort(compareRank))
+            .filter(group => group.length > 0);
+        const selectedBuildings = new Set();
+
+        [...rankedGroups]
+            .sort((left, right) => right.length - left.length || compareRank(left[0], right[0]))
+            .slice(0, iconBudget)
+            .forEach(group => selectedBuildings.add(group[0]));
+
+        const remainingCandidates = rankedGroups.flatMap(group => (
+            group.slice(1).map((building, index) => ({
+                building,
+                rankPercentile: (index + 2) / group.length
+            }))
+        ));
+        remainingCandidates.sort((left, right) => (
+            left.rankPercentile - right.rankPercentile || compareRank(left.building, right.building)
+        ));
+
+        for (const candidate of remainingCandidates) {
+            if (selectedBuildings.size >= iconBudget) break;
+            selectedBuildings.add(candidate.building);
+        }
+
+        selectedBuildings.forEach(building => {
+            building.showTypeIcon = true;
+        });
     }
 
     normalizePopulationToEstimate() {
@@ -959,6 +1018,7 @@ class CitySimulation {
     generateWaste() {
         this.totalCityWaste = 0;
         this.buildings.forEach(b => this.totalCityWaste += b.randomize());
+        this.assignTypeIconVisibility();
         this.totalWasteDisplay.innerText = formatKg(this.totalCityWaste);
         this.updateStatsTooltips();
     }
