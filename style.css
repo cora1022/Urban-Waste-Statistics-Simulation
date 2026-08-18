@@ -59,6 +59,125 @@ body {
     outline: none;
 }
 
+.language-control {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 1100;
+    width: 52px;
+}
+
+.language-menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 52px;
+    height: 42px;
+    padding: 0 5px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    background: rgba(9, 12, 24, 0.86);
+    color: #f5f8fb;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(12px);
+    cursor: pointer;
+}
+
+.current-language-flag {
+    display: block;
+    width: 26px;
+    height: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 3px;
+    object-fit: cover;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.24);
+}
+
+.language-menu-arrow {
+    color: rgba(235, 242, 250, 0.58);
+    font-size: 0.62rem;
+    transition: transform 160ms ease;
+}
+
+.language-control.is-open .language-menu-arrow {
+    transform: rotate(180deg);
+}
+
+.language-menu-toggle:hover,
+.language-menu-toggle[aria-expanded="true"] {
+    border-color: rgba(110, 216, 242, 0.5);
+    background: rgba(18, 24, 43, 0.94);
+}
+
+.language-menu-toggle:focus-visible {
+    outline: 2px solid rgba(110, 216, 242, 0.72);
+    outline-offset: 2px;
+}
+
+.language-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 40px);
+    gap: 5px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    background: rgba(9, 12, 24, 0.94);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(14px);
+}
+
+.language-menu[hidden] {
+    display: none;
+}
+
+.language-flag {
+    position: relative;
+    width: 40px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    filter: saturate(0.72);
+    opacity: 0.62;
+    transition: background-color 160ms ease, border-color 160ms ease, filter 160ms ease, opacity 160ms ease, transform 160ms ease;
+}
+
+.flag-icon {
+    display: block;
+    width: 28px;
+    height: 19px;
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    border-radius: 3px;
+    object-fit: cover;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.22);
+}
+
+.language-flag:hover {
+    background: rgba(255, 255, 255, 0.08);
+    filter: saturate(1);
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+.language-flag.is-selected {
+    display: none;
+}
+
+.language-flag:focus-visible {
+    outline: 2px solid rgba(110, 216, 242, 0.72);
+    outline-offset: 2px;
+}
+
+body:not(.awaiting-mode) .language-control {
+    display: none;
+}
+
 .mode-selection-card {
     position: relative;
     z-index: 2;
@@ -1171,6 +1290,21 @@ body.light-mode #view-controls {
     box-shadow: 0 14px 35px rgba(35, 42, 55, 0.14);
 }
 
+body.light-mode .language-menu-toggle,
+body.light-mode .language-menu {
+    border-color: rgba(45, 49, 57, 0.18);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 12px 28px rgba(35, 42, 55, 0.16);
+}
+
+body.light-mode .language-menu-arrow {
+    color: rgba(45, 49, 57, 0.58);
+}
+
+body.light-mode .language-flag:hover {
+    background: rgba(45, 96, 120, 0.08);
+}
+
 body.light-mode .type-visibility-guide {
     background: rgba(255, 255, 255, 0.96);
     border-color: rgba(53, 116, 143, 0.36);
@@ -1436,6 +1570,16 @@ body.light-mode .tooltip-title {
 }
 
 @media (max-width: 700px) {
+    .language-control {
+        top: calc(env(safe-area-inset-top) + 10px);
+        right: 10px;
+    }
+
+    .language-menu-toggle {
+        width: 50px;
+        height: 40px;
+    }
+
     .mode-selection {
         align-items: flex-start;
         padding: 28px 20px;

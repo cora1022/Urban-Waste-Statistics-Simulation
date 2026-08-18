@@ -2,6 +2,8 @@
  * 도시 폐기물 시뮬레이션 - 멀티 시티 엔진
  */
 
+const { t } = window.AppI18n;
+
 // --- 데이터 세트 ---
 const RATIO_PRESETS = {
     villa: { RESIDENTIAL: 82, COMMERCIAL_FOOD: 6, COMMERCIAL_RETAIL: 8, SCHOOL: 5, INDUSTRIAL: 0, MEDICAL: 2, OFFICE: 1, PARK: 8, CONSTRUCTION: 2, GOVERNMENT: 1 },
@@ -104,6 +106,22 @@ const WASTE_STREAM_KEYS = Object.keys(WASTE_STREAMS);
 const WASTE_CATEGORY_KEYS = Object.keys(WASTE_CATEGORIES);
 const RATIO_PRESET_KEYS = Object.keys(RATIO_PRESETS);
 
+function getBuildingTypeLabel(typeKey) {
+    return window.AppI18n.getLocalizedLabel('buildingTypes', BUILDING_TYPE_KEYS.indexOf(typeKey));
+}
+
+function getWasteStreamLabel(streamKey) {
+    return window.AppI18n.getLocalizedLabel('wasteStreams', WASTE_STREAM_KEYS.indexOf(streamKey));
+}
+
+function getWasteCategoryLabel(categoryKey) {
+    return window.AppI18n.getLocalizedLabel('wasteCategories', WASTE_CATEGORY_KEYS.indexOf(categoryKey));
+}
+
+function getLocalizedBuildingName(typeKey, prefixIndex, suffixIndex) {
+    return window.AppI18n.getBuildingName(typeKey, prefixIndex, suffixIndex);
+}
+
 const KOREA_WASTE_BENCHMARK = {
     municipalPerCapitaKg: 1.2,
     householdSurveyPerCapitaKg: 0.9506,
@@ -159,11 +177,11 @@ function clamp(value, min, max) {
 }
 
 function formatKg(value) {
-    return Math.round(value || 0).toLocaleString();
+    return Math.round(value || 0).toLocaleString(window.AppI18n.getLocale());
 }
 
 function formatPeople(value) {
-    return Math.round(value || 0).toLocaleString();
+    return Math.round(value || 0).toLocaleString(window.AppI18n.getLocale());
 }
 
 function getBuildingTypeColor(typeKey, type) {
@@ -424,10 +442,10 @@ class Building {
         this.typeKey = typeKey;
         this.type = BUILDING_TYPES[typeKey];
         
-        const pre = NAME_PREFIXES[Math.floor(Math.random() * NAME_PREFIXES.length)];
+        this.namePrefixIndex = Math.floor(Math.random() * NAME_PREFIXES.length);
         const sufList = NAME_SUFFIXES[typeKey] || ['건물'];
-        const suf = sufList[Math.floor(Math.random() * sufList.length)];
-        this.name = `${pre} ${suf}`;
+        this.nameSuffixIndex = Math.floor(Math.random() * sufList.length);
+        this.name = getLocalizedBuildingName(typeKey, this.namePrefixIndex, this.nameSuffixIndex);
         
         const population = calculateBuildingPopulation(this.type, this.city.config);
         this.residentPopulation = population.residentPop;
@@ -698,10 +716,10 @@ class CitySimulation {
         const h = this.canvas.height;
 
         // 헤더 통계에 툴팁 추가
-        this.totalResidentPopDisplay.parentElement.title = "계산식: 주거 시설 면적 × 거주 밀도 × 인구 기준 배율\n* 주민등록인구처럼 실제 거주자를 맞추는 값";
-        this.totalWorkerPopDisplay.parentElement.title = "계산식: 비주거 시설 면적 × 종사자 밀도 × 인구 기준 배율 × 종사 인구 보정\n* 사업체 종사자/작업자 성격의 인구";
-        this.totalVisitorPopDisplay.parentElement.title = "계산식: 건물 면적 × 방문 밀도 × 인구 기준 배율 × 유동 인구 보정\n* 방문자, 통행자, 이용자 성격의 인구";
-        this.totalWasteDisplay.parentElement.title = "계산식: ∑((거주+종사 인구) × 1인 1일 생활폐기물 계수 + 유동 인구 × 방문 배출계수 + 건물 유형별 특수 폐기물)\n* 단위: kg/일, 2023년 전국 생활폐기물 1.2kg/일·인과 제6차 조성비 기준 보정";
+        this.totalResidentPopDisplay.parentElement.title = t('header.residentFormula');
+        this.totalWorkerPopDisplay.parentElement.title = t('header.workerFormula');
+        this.totalVisitorPopDisplay.parentElement.title = t('header.visitorFormula');
+        this.totalWasteDisplay.parentElement.title = t('header.wasteFormula');
         this.totalResidentPopDisplay.parentElement.style.cursor = 'help';
         this.totalWorkerPopDisplay.parentElement.style.cursor = 'help';
         this.totalVisitorPopDisplay.parentElement.style.cursor = 'help';
@@ -730,9 +748,10 @@ class CitySimulation {
                 b.typeKey = forcedType;
                 b.type = BUILDING_TYPES[forcedType];
                 
-                const pre = NAME_PREFIXES[Math.floor(Math.random() * NAME_PREFIXES.length)];
                 const sufList = NAME_SUFFIXES[forcedType] || ['건물'];
-                b.name = `${pre} ${sufList[Math.floor(Math.random() * sufList.length)]}`;
+                b.namePrefixIndex = Math.floor(Math.random() * NAME_PREFIXES.length);
+                b.nameSuffixIndex = Math.floor(Math.random() * sufList.length);
+                b.name = getLocalizedBuildingName(forcedType, b.namePrefixIndex, b.nameSuffixIndex);
                 const population = calculateBuildingPopulation(b.type, this.config);
                 b.residentPopulation = population.residentPop;
                 b.workerPopulation = population.workerPop;
@@ -755,9 +774,9 @@ class CitySimulation {
         this.totalResidentPopulation = this.buildings.reduce((sum, b) => sum + (b.residentPopulation || 0), 0);
         this.totalWorkerPopulation = this.buildings.reduce((sum, b) => sum + (b.workerPopulation || 0), 0);
         this.totalVisitorPopulation = this.buildings.reduce((sum, b) => sum + (b.visitorPopulation || 0), 0);
-        this.totalResidentPopDisplay.innerText = this.totalResidentPopulation.toLocaleString();
-        this.totalWorkerPopDisplay.innerText = this.totalWorkerPopulation.toLocaleString();
-        this.totalVisitorPopDisplay.innerText = this.totalVisitorPopulation.toLocaleString();
+        this.totalResidentPopDisplay.innerText = this.totalResidentPopulation.toLocaleString(window.AppI18n.getLocale());
+        this.totalWorkerPopDisplay.innerText = this.totalWorkerPopulation.toLocaleString(window.AppI18n.getLocale());
+        this.totalVisitorPopDisplay.innerText = this.totalVisitorPopulation.toLocaleString(window.AppI18n.getLocale());
         this.totalBldDisplay.innerText = this.buildings.length;
 
         this.updateStatsTooltips();
@@ -924,79 +943,79 @@ class CitySimulation {
         };
 
         // 건물 수 툴팁
-        setupHeaderTooltip(this.totalBldDisplay, () => "🏙️ 건물 유형별 통계", () => {
+        setupHeaderTooltip(this.totalBldDisplay, () => t('tooltip.buildingStats'), () => {
             return BUILDING_TYPE_KEYS
                 .map(k => ({
-                    label: BUILDING_TYPES[k].label,
-                    value: `${stats[k].count}동`,
+                    label: getBuildingTypeLabel(k),
+                    value: t('unit.buildingValue', { value: stats[k].count.toLocaleString(window.AppI18n.getLocale()) }),
                     show: stats[k].count > 0
                 }))
                 .filter(i => i.show);
         });
 
         // 거주 인구 툴팁
-        setupHeaderTooltip(this.totalResidentPopDisplay, () => "🏠 거주 인구 상세", () => {
+        setupHeaderTooltip(this.totalResidentPopDisplay, () => t('tooltip.residentDetails'), () => {
             return BUILDING_TYPE_KEYS
                 .map(k => ({
-                    label: BUILDING_TYPES[k].label,
-                    value: `${stats[k].residentPop.toLocaleString()}명`,
+                    label: getBuildingTypeLabel(k),
+                    value: t('unit.peopleValue', { value: stats[k].residentPop.toLocaleString(window.AppI18n.getLocale()) }),
                     show: stats[k].residentPop > 0
                 }))
                 .filter(i => i.show);
         });
 
         // 종사 인구 툴팁
-        setupHeaderTooltip(this.totalWorkerPopDisplay, () => "🏢 종사 인구 상세", () => {
+        setupHeaderTooltip(this.totalWorkerPopDisplay, () => t('tooltip.workerDetails'), () => {
             return BUILDING_TYPE_KEYS
                 .map(k => ({
-                    label: BUILDING_TYPES[k].label,
-                    value: `${stats[k].workerPop.toLocaleString()}명 (${formatKg(stats[k].standingWaste)}kg/일)`,
+                    label: getBuildingTypeLabel(k),
+                    value: `${t('unit.peopleValue', { value: stats[k].workerPop.toLocaleString(window.AppI18n.getLocale()) })} (${t('unit.kgDayValue', { value: formatKg(stats[k].standingWaste) })})`,
                     show: stats[k].workerPop > 0 || stats[k].standingWaste > 0
                 }))
                 .filter(i => i.show);
         });
 
         // 유동 인구 툴팁
-        setupHeaderTooltip(this.totalVisitorPopDisplay, () => "🏃 유동 인구 상세", () => {
+        setupHeaderTooltip(this.totalVisitorPopDisplay, () => t('tooltip.visitorDetails'), () => {
             return BUILDING_TYPE_KEYS
                 .map(k => ({
-                    label: BUILDING_TYPES[k].label,
-                    value: `${stats[k].visitorPop.toLocaleString()}명 (${formatKg(stats[k].visitorWaste)}kg/일)`,
+                    label: getBuildingTypeLabel(k),
+                    value: `${t('unit.peopleValue', { value: stats[k].visitorPop.toLocaleString(window.AppI18n.getLocale()) })} (${t('unit.kgDayValue', { value: formatKg(stats[k].visitorWaste) })})`,
                     show: stats[k].visitorPop > 0 || stats[k].visitorWaste > 0
                 }))
                 .filter(i => i.show);
         });
 
         // 폐기물 툴팁
-        setupHeaderTooltip(this.totalWasteDisplay, () => "♻️ 1일 폐기물 배출량 상세", () => {
+        setupHeaderTooltip(this.totalWasteDisplay, () => t('tooltip.wasteDetails'), () => {
             const categoryItems = WASTE_CATEGORY_KEYS
                 .map(k => ({
-                    label: WASTE_CATEGORIES[k],
-                    value: `${formatKg(cityCategoryBreakdown[k])}kg/일`,
+                    label: getWasteCategoryLabel(k),
+                    value: t('unit.kgDayValue', { value: formatKg(cityCategoryBreakdown[k]) }),
                     show: cityCategoryBreakdown[k] > 0
                 }))
                 .filter(i => i.show);
 
             const materialItems = WASTE_STREAM_KEYS
                 .map(k => ({
-                    label: WASTE_STREAMS[k].label,
-                    value: `${formatKg(cityWasteBreakdown[k])}kg/일`,
+                    label: getWasteStreamLabel(k),
+                    value: t('unit.kgDayValue', { value: formatKg(cityWasteBreakdown[k]) }),
                     show: cityWasteBreakdown[k] > 0
                 }))
                 .filter(i => i.show);
 
             const typeItems = BUILDING_TYPE_KEYS
                 .map(k => ({
-                    label: BUILDING_TYPES[k].label,
-                    value: `${formatKg(stats[k].totalWaste)}kg/일`,
+                    label: getBuildingTypeLabel(k),
+                    value: t('unit.kgDayValue', { value: formatKg(stats[k].totalWaste) }),
                     show: stats[k].totalWaste > 0
                 }))
                 .filter(i => i.show);
 
             return [
-                ...(categoryItems.length ? [{ kind: 'section', label: '배출 카테고리' }, ...categoryItems] : []),
-                ...(materialItems.length ? [{ kind: 'section', label: '세부 폐기물' }, ...materialItems] : []),
-                ...(typeItems.length ? [{ kind: 'section', label: '건물 유형별' }, ...typeItems] : [])
+                ...(categoryItems.length ? [{ kind: 'section', label: t('tooltip.categories') }, ...categoryItems] : []),
+                ...(materialItems.length ? [{ kind: 'section', label: t('tooltip.materials') }, ...materialItems] : []),
+                ...(typeItems.length ? [{ kind: 'section', label: t('tooltip.types') }, ...typeItems] : [])
             ];
         });
     }
@@ -1162,6 +1181,7 @@ const wasteScaleDesc = document.getElementById('waste-scale-desc');
 const generateAction = document.getElementById('generate-action');
 const generateAllButton = document.getElementById('btn-generate-all');
 const themeToggleButton = document.getElementById('btn-theme-toggle');
+const soundToggleControl = document.getElementById('enable-sounds');
 const typeToggleButtons = document.querySelectorAll('.btn-toggle-types');
 const typeVisibilityGuide = document.getElementById('type-visibility-guide');
 const typeVisibilityGuideCloseButton = document.getElementById('btn-close-type-guide');
@@ -1171,6 +1191,10 @@ const modeSelectionButtons = document.querySelectorAll('[data-select-mode]');
 const modeContinueButton = document.getElementById('btn-mode-continue');
 const modeContinueLabel = document.querySelector('[data-mode-continue-label]');
 const modeSelectButton = document.getElementById('btn-mode-select');
+const languageControl = document.getElementById('language-control');
+const languageMenuToggle = document.getElementById('language-menu-toggle');
+const languageMenu = document.getElementById('language-menu');
+const languageButtons = document.querySelectorAll('[data-language-button]');
 let currentTheme = 'dark';
 let typeGuideDismissed = false;
 let downloadModalReturnFocus = null;
@@ -1184,16 +1208,16 @@ function getActiveCities() {
 }
 
 function getCityLabel(city) {
-    if (simulationMode === 'single') return '도시';
-    return city === cityLeft ? '도시 A' : '도시 B';
+    if (simulationMode === 'single') return t('city.single');
+    return city === cityLeft ? t('city.left') : t('city.right');
 }
 
 function syncModeUI() {
-    cityLeft.container.querySelector('.city-label').innerText = simulationMode === 'single' ? '도시' : '도시 A';
-    cityRight.container.querySelector('.city-label').innerText = '도시 B';
+    cityLeft.container.querySelector('.city-label').innerText = simulationMode === 'single' ? t('city.single') : t('city.left');
+    cityRight.container.querySelector('.city-label').innerText = t('city.right');
     document.title = simulationMode === 'single'
-        ? '도시 폐기물 시뮬레이션'
-        : '도시 폐기물 비교 시뮬레이션';
+        ? t('app.title.single')
+        : t('app.title.comparison');
     syncTypeToggleButtons();
 }
 
@@ -1204,13 +1228,13 @@ function updateModeSelectionUI() {
         button.setAttribute('aria-pressed', String(isSelected));
     });
 
-    modeContinueLabel.innerText = '시뮬레이션 시작';
+    modeContinueLabel.innerText = t('entry.start');
 }
 
 function openModeSelection() {
     modal.style.display = 'none';
     closeDownloadModal();
-    hideTooltip();
+    tooltip.style.display = 'none';
     entrySelectedMode = simulationMode || entrySelectedMode || 'comparison';
     updateModeSelectionUI();
     document.body.classList.add('awaiting-mode');
@@ -1252,17 +1276,17 @@ function applyTheme(theme) {
     currentTheme = theme;
     Object.assign(COLORS, THEME_COLORS[theme]);
     document.body.classList.toggle('light-mode', theme === 'light');
-    themeToggleButton.innerText = theme === 'light' ? '다크' : '화이트';
+    themeToggleButton.innerText = theme === 'light' ? t('controls.themeDark') : t('controls.themeLight');
     themeToggleButton.setAttribute('aria-pressed', String(theme === 'light'));
 }
 
 function syncTypeToggleButtons() {
     typeToggleButtons.forEach(button => {
         const city = getCityByKey(button.dataset.city);
-        const label = simulationMode === 'single' ? '' : (button.dataset.city === 'left' ? 'A ' : 'B ');
+        const label = simulationMode === 'single' ? '' : `${button.dataset.city === 'left' ? 'A' : 'B'} `;
         button.classList.toggle('is-active', city.config.showTypes);
         button.setAttribute('aria-pressed', String(city.config.showTypes));
-        button.innerText = city.config.showTypes ? `${label}숨김` : `${label}유형`;
+        button.innerText = city.config.showTypes ? `${label}${t('controls.hide')}` : `${label}${t('controls.type')}`;
     });
 }
 
@@ -1327,7 +1351,7 @@ function randomizeCityConfig(city) {
         updateScaleControlsFromConfig();
         updateRatioUI();
         updatePopulationEstimateUI();
-        cityFitResult.innerText = '도로, 건물 수, 인구 배율, 자동차 비율, 건물 유형 비율을 새로 섞었습니다.';
+        cityFitResult.innerText = t('message.randomized');
     }
 
     updateComparisonBar();
@@ -1401,9 +1425,9 @@ function updateComparisonBar() {
     
     if (total === 0) {
         barLeft.style.width = '50%';
-        barLeft.innerText = '도시 A (0%)';
+        barLeft.innerText = t('comparison.cityPercent', { city: t('city.left'), percent: '0' });
         barRight.style.width = '50%';
-        barRight.innerText = '도시 B (0%)';
+        barRight.innerText = t('comparison.cityPercent', { city: t('city.right'), percent: '0' });
         return;
     }
 
@@ -1411,10 +1435,10 @@ function updateComparisonBar() {
     const pctRight = (cityRight.totalCityWaste / total) * 100;
 
     barLeft.style.width = `${pctLeft}%`;
-    barLeft.innerText = `도시 A (${pctLeft.toFixed(1)}%)`;
+    barLeft.innerText = t('comparison.cityPercent', { city: t('city.left'), percent: pctLeft.toFixed(1) });
     
     barRight.style.width = `${pctRight}%`;
-    barRight.innerText = `도시 B (${pctRight.toFixed(1)}%)`;
+    barRight.innerText = t('comparison.cityPercent', { city: t('city.right'), percent: pctRight.toFixed(1) });
 }
 
 // 설정 모달 핸들러
@@ -1444,10 +1468,10 @@ function syncPopulationScaleControls(value) {
 function updatePopulationEstimateUI() {
     if (!activeCity) return;
     const estimate = estimatePopulationForConfig(activeCity.config);
-    estimateResidentPop.innerText = `${formatPeople(estimate.residentPop)}명`;
-    estimateWorkerPop.innerText = `${formatPeople(estimate.workerPop)}명`;
-    estimateVisitorPop.innerText = `${formatPeople(estimate.visitorPop)}명`;
-    estimateTotalPop.innerText = `${formatPeople(estimate.totalPop)}명`;
+    estimateResidentPop.innerText = t('unit.peopleValue', { value: formatPeople(estimate.residentPop) });
+    estimateWorkerPop.innerText = t('unit.peopleValue', { value: formatPeople(estimate.workerPop) });
+    estimateVisitorPop.innerText = t('unit.peopleValue', { value: formatPeople(estimate.visitorPop) });
+    estimateTotalPop.innerText = t('unit.peopleValue', { value: formatPeople(estimate.totalPop) });
     updateTrafficEstimateUI();
 }
 
@@ -1467,26 +1491,26 @@ function getWasteScaleProfile(scale) {
     if (percent < 85) {
         return {
             key: 'saving',
-            label: `절약형 ${percent}%`,
-            title: '절약하는 도시',
-            desc: `대한민국 평균보다 약 ${diff}% 적게 배출합니다. 감량, 재사용, 분리배출이 잘 되는 도시로 가정합니다.`
+            label: t('scale.savingLabel', { percent }),
+            title: t('scale.savingTitle'),
+            desc: t('scale.savingDescription', { diff })
         };
     }
 
     if (percent > 115) {
         return {
             key: 'wasteful',
-            label: `막배출형 ${percent}%`,
-            title: '막폐기하는 도시',
-            desc: `대한민국 평균보다 약 ${diff}% 많이 배출합니다. 일회용품 사용과 혼합배출이 많은 도시로 가정합니다.`
+            label: t('scale.wastefulLabel', { percent }),
+            title: t('scale.wastefulTitle'),
+            desc: t('scale.wastefulDescription', { diff })
         };
     }
 
     return {
         key: 'normal',
-        label: `대한민국 평균 ${percent}%`,
-        title: '보통 도시',
-        desc: '대한민국 생활폐기물 평균 배출계수를 그대로 적용합니다. 슬라이더 중앙값 100%가 기준입니다.'
+        label: t('scale.averageLabel', { percent }),
+        title: t('scale.averageTitle'),
+        desc: t('scale.averageDescription')
     };
 }
 
@@ -1503,7 +1527,7 @@ function updateTrafficEstimateUI() {
     if (!activeCity) return;
     const estimate = estimatePopulationForConfig(activeCity.config);
     trafficScaleLabel.innerText = `${Math.round((activeCity.config.trafficScale ?? 1) * 100)}%`;
-    trafficEstimate.innerText = `예상 인구 기준 자동차 수: 약 ${activeCity.getTargetVehicleCount(estimate)}대`;
+    trafficEstimate.innerText = t('message.trafficEstimate', { count: activeCity.getTargetVehicleCount(estimate).toLocaleString(window.AppI18n.getLocale()) });
 }
 
 function applyCityDataToConfig() {
@@ -1525,7 +1549,7 @@ function applyCityDataToConfig() {
         if (baseEstimate.residentPop > 0) {
             const nextScale = clamp(targetResidentPop / baseEstimate.residentPop, parseFloat(populationScaleRange.min), parseFloat(populationScaleRange.max));
             activeCity.config.populationScale = Number(nextScale.toFixed(1));
-            messages.push(`인구 기준 배율 ${activeCity.config.populationScale}배`);
+            messages.push(t('message.populationScale', { value: activeCity.config.populationScale }));
         }
     }
 
@@ -1536,7 +1560,7 @@ function applyCityDataToConfig() {
         });
         if (baseWorkerEstimate.workerPop > 0) {
             activeCity.config.workerPopulationScale = clamp(targetWorkerPop / baseWorkerEstimate.workerPop, 0.05, 20);
-            messages.push(`종사 인구 보정 ${activeCity.config.workerPopulationScale.toFixed(2)}배`);
+            messages.push(t('message.workerScale', { value: activeCity.config.workerPopulationScale.toFixed(2) }));
         }
     }
 
@@ -1547,7 +1571,7 @@ function applyCityDataToConfig() {
         });
         if (baseVisitorEstimate.visitorPop > 0) {
             activeCity.config.floatPopulationScale = clamp(targetVisitorPop / baseVisitorEstimate.visitorPop, 0.05, 20);
-            messages.push(`유동 인구 보정 ${activeCity.config.floatPopulationScale.toFixed(2)}배`);
+            messages.push(t('message.visitorScale', { value: activeCity.config.floatPopulationScale.toFixed(2) }));
         }
     }
 
@@ -1556,7 +1580,7 @@ function applyCityDataToConfig() {
         if (baseWaste > 0) {
             const nextWasteScale = clamp(targetWasteKg / baseWaste, 0.01, 2);
             activeCity.config.wasteScale = Number(nextWasteScale.toFixed(3));
-            messages.push(`폐기물 발생 배율 ${Math.round(activeCity.config.wasteScale * 100)}%`);
+            messages.push(t('message.wasteScale', { value: Math.round(activeCity.config.wasteScale * 100) }));
         }
     }
 
@@ -1565,8 +1589,14 @@ function applyCityDataToConfig() {
     const estimate = estimatePopulationForConfig(activeCity.config);
     const wasteTon = estimateDailyWasteForConfig(activeCity.config) / 1000;
     cityFitResult.innerText = messages.length
-        ? `${messages.join(', ')} 적용. 예상 거주 ${formatPeople(estimate.residentPop)}명, 종사 ${formatPeople(estimate.workerPop)}명, 유동 ${formatPeople(estimate.visitorPop)}명, 폐기물 ${wasteTon.toFixed(1)}톤/일.`
-        : '목표 거주 인구, 종사 인구, 유동 인구 또는 폐기물 톤/일 중 하나 이상을 입력하세요.';
+        ? t('message.fitApplied', {
+            messages: messages.join(', '),
+            resident: formatPeople(estimate.residentPop),
+            worker: formatPeople(estimate.workerPop),
+            visitor: formatPeople(estimate.visitorPop),
+            waste: wasteTon.toFixed(1)
+        })
+        : t('message.fitRequired');
 }
 
 document.querySelectorAll('.btn-settings').forEach(btn => {
@@ -1574,12 +1604,12 @@ document.querySelectorAll('.btn-settings').forEach(btn => {
         const target = e.currentTarget.dataset.city;
         activeCity = (target === 'left') ? cityLeft : cityRight;
         
-        document.getElementById('modal-title').innerText = `${getCityLabel(activeCity)} 설정`;
+        document.getElementById('modal-title').innerText = t('city.settingsTitle', { city: getCityLabel(activeCity) });
         document.getElementById('show-types').checked = activeCity.config.showTypes;
         buildingCountRange.value = activeCity.config.targetBuildings;
         buildingCountNumber.value = activeCity.config.targetBuildings;
         updateScaleControlsFromConfig();
-        cityFitResult.innerText = '거주 인구만 넣어도 인구 기준 배율을 자동 계산합니다.';
+        cityFitResult.innerText = t('settings.fitDefault');
         
         roadLayoutSelect.value = activeCity.config.roadLayout || 0;
         presetSelect.value = activeCity.config.preset || 'custom';
@@ -1593,8 +1623,14 @@ document.querySelectorAll('.btn-settings').forEach(btn => {
 
 closeBtn.onclick = () => modal.style.display = 'none';
 window.onclick = (e) => {
-    if (e.target === modal) modal.style.display = 'none';
-    if (e.target === downloadModal) closeDownloadModal();
+    if (e.target === modal && modal.style.display === 'block') {
+        modal.style.display = 'none';
+        window.AppSound.play('close');
+    }
+    if (e.target === downloadModal && downloadModal.style.display === 'block') {
+        closeDownloadModal();
+        window.AppSound.play('close');
+    }
 };
 
 // 설정 변경 적용
@@ -1614,7 +1650,7 @@ wasteScaleRange.oninput = (e) => {
     if (cityFitResult) {
         const wasteTon = estimateDailyWasteForConfig(activeCity.config) / 1000;
         const profile = getWasteScaleProfile(activeCity.config.wasteScale);
-        cityFitResult.innerText = `${profile.title} 기준으로 예상 폐기물은 약 ${wasteTon.toFixed(1)}톤/일입니다.`;
+        cityFitResult.innerText = t('message.wasteEstimate', { profile: profile.title, waste: wasteTon.toFixed(1) });
     }
 };
 
@@ -1634,19 +1670,22 @@ function updateRatioUI() {
     ratioControls.innerHTML = '';
     BUILDING_TYPE_KEYS.forEach(key => {
         const type = BUILDING_TYPES[key];
+        const typeLabel = getBuildingTypeLabel(key);
         const item = document.createElement('div');
         item.className = 'ratio-item';
         
-        const statsInfo = `[${type.label} 통계]\n` +
-            `• 거주/종사 인구 밀도: ${type.workerDensity}\n` +
-            `• 유동 인구 밀도: ${type.visitorDensity}\n` +
-            `• 현재 인구 기준 배율: ${activeCity.config.populationScale || 1}배\n` +
-            `• 거주/종사 1인 1일 배출계수: ${type.workerWasteRate}kg/일\n` +
-            `• 방문 1인 배출계수: ${type.visitorWasteRate}kg/일\n` +
-            `• 특수 폐기물: ${type.specialWasteShares ? '건물 유형별 별도 발생분 적용' : '없음'}`;
+        const statsInfo = [
+            t('ratio.stats', { type: typeLabel }),
+            t('ratio.standingDensity', { value: type.workerDensity }),
+            t('ratio.visitorDensity', { value: type.visitorDensity }),
+            t('ratio.populationScale', { value: activeCity.config.populationScale || 1 }),
+            t('ratio.standingRate', { value: type.workerWasteRate }),
+            t('ratio.visitorRate', { value: type.visitorWasteRate }),
+            t('ratio.specialWaste', { value: type.specialWasteShares ? t('ratio.specialApplied') : t('ratio.none') })
+        ].join('\n');
 
         item.innerHTML = `
-            <label title="${statsInfo}" style="cursor: help;">${type.icon} ${type.label} ⓘ</label>
+            <label title="${statsInfo}" style="cursor: help;">${type.icon} ${typeLabel} ⓘ</label>
             <input type="range" min="0" max="100" value="${activeCity.config.typeWeights[key]}" data-type="${key}">
         `;
         item.querySelector('input').oninput = (e) => {
@@ -1728,7 +1767,7 @@ function getSortedExportRows(sortKey) {
     const compareCity = (left, right) => left.cityIndex - right.cityIndex;
     const compareWaste = (left, right) => (right.building.waste || 0) - (left.building.waste || 0);
     const comparePopulation = (left, right) => getBuildingTotalPopulation(right.building) - getBuildingTotalPopulation(left.building);
-    const compareName = (left, right) => left.building.name.localeCompare(right.building.name, 'ko');
+    const compareName = (left, right) => left.building.name.localeCompare(right.building.name, window.AppI18n.getLocale());
     const compareOriginalIndex = (left, right) => left.buildingIndex - right.buildingIndex;
 
     const sortComparators = {
@@ -1758,12 +1797,12 @@ function downloadStatistics(sortKey) {
     const categoryKeys = WASTE_CATEGORY_KEYS;
     const materialKeys = WASTE_STREAM_KEYS;
     const csvHeaders = [
-        "도시", "ID", "이름", "유형", "인구기준배율", "종사인구보정", "유동인구보정",
-        "거주인구(명)", "종사인구(명)", "유동인구(명)",
-        "거주/종사계수(kg/일·인)", "유동계수(kg/일·인)", "특수폐기물(kg/일)", "총폐기물(kg/일)",
-        ...categoryKeys.map(key => `${WASTE_CATEGORIES[key]}(kg/일)`),
-        ...materialKeys.map(key => `${WASTE_STREAMS[key].label}(kg/일)`),
-        "임시보관용량(kg)"
+        t('csv.city'), t('csv.id'), t('csv.name'), t('csv.type'), t('csv.populationScale'), t('csv.workerScale'), t('csv.visitorScale'),
+        t('csv.resident'), t('csv.worker'), t('csv.visitor'),
+        t('csv.standingRate'), t('csv.visitorRate'), t('csv.specialWaste'), t('csv.totalWaste'),
+        ...categoryKeys.map(key => `${getWasteCategoryLabel(key)}${t('csv.kgDaySuffix')}`),
+        ...materialKeys.map(key => `${getWasteStreamLabel(key)}${t('csv.kgDaySuffix')}`),
+        t('csv.capacity')
     ];
     csvRows.push(csvHeaders);
 
@@ -1775,7 +1814,7 @@ function downloadStatistics(sortKey) {
             cityLabel,
             buildingIndex + 1,
             b.name,
-            b.type.label,
+            getBuildingTypeLabel(b.typeKey),
             city.config.populationScale || 1,
             city.config.workerPopulationScale || 1,
             city.config.floatPopulationScale || 1,
@@ -1799,7 +1838,7 @@ function downloadStatistics(sortKey) {
     const modeLabel = simulationMode === 'single' ? 'single' : 'comparison';
     const dateLabel = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
     link.setAttribute("href", downloadUrl);
-    link.setAttribute("download", `urban_waste_${modeLabel}_${sortKey}_${dateLabel}.csv`);
+    link.setAttribute("download", `urban_waste_${window.AppI18n.getLanguage()}_${modeLabel}_${sortKey}_${dateLabel}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1868,31 +1907,31 @@ function renderBuildingTooltip(building, pointerEvent, shouldResetScroll = false
     const categoryRows = WASTE_CATEGORY_KEYS
         .filter(key => (categoryBreakdown[key] || 0) > 0)
         .map(key => `
-            <div class="tooltip-row"><span class="tooltip-label">${WASTE_CATEGORIES[key]}</span><span class="tooltip-value">${formatKg(categoryBreakdown[key])} kg/일</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">${getWasteCategoryLabel(key)}</span><span class="tooltip-value">${t('unit.kgDayValue', { value: formatKg(categoryBreakdown[key]) })}</span></div>
         `)
         .join('');
     const breakdownRows = WASTE_STREAM_KEYS
         .filter(key => (building.wasteBreakdown?.[key] || 0) > 0)
         .map(key => `
-            <div class="tooltip-row"><span class="tooltip-label">${WASTE_STREAMS[key].label}</span><span class="tooltip-value">${formatKg(building.wasteBreakdown[key])} kg/일</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">${getWasteStreamLabel(key)}</span><span class="tooltip-value">${t('unit.kgDayValue', { value: formatKg(building.wasteBreakdown[key]) })}</span></div>
         `)
         .join('');
 
     tooltip.innerHTML = `
             <div class="tooltip-title"><span>${building.type.icon}</span><span>${building.name}</span></div>
         <div class="tooltip-info">
-            <div class="tooltip-row"><span class="tooltip-label">유형</span><span class="tooltip-value">${building.type.label}</span></div>
-            <div class="tooltip-row"><span class="tooltip-label">거주 인구</span><span class="tooltip-value">${(building.residentPopulation || 0).toLocaleString()}명</span></div>
-            <div class="tooltip-row"><span class="tooltip-label">종사 인구</span><span class="tooltip-value">${(building.workerPopulation || 0).toLocaleString()}명</span></div>
-            <div class="tooltip-row"><span class="tooltip-label">유동 인구</span><span class="tooltip-value">${(building.visitorPopulation || 0).toLocaleString()}명</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">${t('tooltip.type')}</span><span class="tooltip-value">${getBuildingTypeLabel(building.typeKey)}</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">${t('stat.resident')}</span><span class="tooltip-value">${t('unit.peopleValue', { value: (building.residentPopulation || 0).toLocaleString(window.AppI18n.getLocale()) })}</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">${t('stat.worker')}</span><span class="tooltip-value">${t('unit.peopleValue', { value: (building.workerPopulation || 0).toLocaleString(window.AppI18n.getLocale()) })}</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">${t('stat.visitor')}</span><span class="tooltip-value">${t('unit.peopleValue', { value: (building.visitorPopulation || 0).toLocaleString(window.AppI18n.getLocale()) })}</span></div>
             <div class="tooltip-divider" style="height: 1px; background: rgba(255,255,255,0.1); margin: 5px 0;"></div>
-            <div class="tooltip-row"><span class="tooltip-label">거주/종사 폐기물</span><span class="tooltip-value">${formatKg(standingWaste)} kg/일</span></div>
-            <div class="tooltip-row"><span class="tooltip-label">유동 폐기물</span><span class="tooltip-value">${formatKg(visitorWaste)} kg/일</span></div>
-            ${specialWaste > 0 ? `<div class="tooltip-row"><span class="tooltip-label">특수 폐기물</span><span class="tooltip-value">${formatKg(specialWaste)} kg/일</span></div>` : ''}
-            <div class="tooltip-row"><span class="tooltip-label">총 폐기물</span><span class="tooltip-value">${formatKg(building.waste)} kg/일</span></div>
-            ${categoryRows ? `<div class="tooltip-section">배출 카테고리</div>${categoryRows}` : ''}
-            ${breakdownRows ? `<div class="tooltip-section">세부 폐기물</div>${breakdownRows}` : ''}
-            <div class="tooltip-row"><span class="tooltip-label">포화도</span><span class="tooltip-value">${((building.waste / building.capacity) * 100).toFixed(1)}%</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">${t('tooltip.standingWaste')}</span><span class="tooltip-value">${t('unit.kgDayValue', { value: formatKg(standingWaste) })}</span></div>
+            <div class="tooltip-row"><span class="tooltip-label">${t('tooltip.visitorWaste')}</span><span class="tooltip-value">${t('unit.kgDayValue', { value: formatKg(visitorWaste) })}</span></div>
+            ${specialWaste > 0 ? `<div class="tooltip-row"><span class="tooltip-label">${t('tooltip.specialWaste')}</span><span class="tooltip-value">${t('unit.kgDayValue', { value: formatKg(specialWaste) })}</span></div>` : ''}
+            <div class="tooltip-row"><span class="tooltip-label">${t('tooltip.totalWaste')}</span><span class="tooltip-value">${t('unit.kgDayValue', { value: formatKg(building.waste) })}</span></div>
+            ${categoryRows ? `<div class="tooltip-section">${t('tooltip.categories')}</div>${categoryRows}` : ''}
+            ${breakdownRows ? `<div class="tooltip-section">${t('tooltip.materials')}</div>${breakdownRows}` : ''}
+            <div class="tooltip-row"><span class="tooltip-label">${t('tooltip.saturation')}</span><span class="tooltip-value">${((building.waste / building.capacity) * 100).toFixed(1)}%</span></div>
         </div>
     `;
     positionTooltip(pointerEvent);
@@ -1929,6 +1968,133 @@ function renderBuildingTooltip(building, pointerEvent, shouldResetScroll = false
         }
     }, { passive: true });
 });
+
+function refreshLocalizedUI() {
+    [cityLeft, cityRight].forEach(city => {
+        city.buildings.forEach(building => {
+            building.name = getLocalizedBuildingName(
+                building.typeKey,
+                building.namePrefixIndex || 0,
+                building.nameSuffixIndex || 0
+            );
+        });
+        city.totalResidentPopDisplay.innerText = formatPeople(city.totalResidentPopulation);
+        city.totalWorkerPopDisplay.innerText = formatPeople(city.totalWorkerPopulation);
+        city.totalVisitorPopDisplay.innerText = formatPeople(city.totalVisitorPopulation);
+        city.totalBldDisplay.innerText = city.buildings.length.toLocaleString(window.AppI18n.getLocale());
+        city.totalWasteDisplay.innerText = formatKg(city.totalCityWaste);
+        city.updateStatsTooltips();
+    });
+
+    if (simulationMode) {
+        syncModeUI();
+        updateComparisonBar();
+    } else {
+        document.title = t('app.title.comparison');
+        syncTypeToggleButtons();
+    }
+
+    updateModeSelectionUI();
+    applyTheme(currentTheme);
+    syncSoundToggleUI();
+    hideTooltip();
+
+    if (activeCity) {
+        document.getElementById('modal-title').innerText = t('city.settingsTitle', { city: getCityLabel(activeCity) });
+        updatePopulationEstimateUI();
+        updateWasteScaleUI();
+        updateTrafficEstimateUI();
+        cityFitResult.innerText = t('settings.fitDefault');
+        if (modal.style.display === 'block') updateRatioUI();
+    }
+}
+
+function syncSoundToggleUI() {
+    const isEnabled = window.AppSound.isEnabled();
+    soundToggleControl.checked = isEnabled;
+}
+
+soundToggleControl.onchange = () => {
+    const wasEnabled = window.AppSound.isEnabled();
+    if (wasEnabled) window.AppSound.play('toggleOff');
+    window.AppSound.setEnabled(soundToggleControl.checked);
+    if (!wasEnabled && soundToggleControl.checked) window.AppSound.play('toggleOn');
+    syncSoundToggleUI();
+};
+
+function getButtonSound(button) {
+    if (button.id === 'btn-mode-continue') return 'start';
+    if (button.id === 'btn-generate-all') return 'generate';
+    if (button.classList.contains('download-confirm')) return 'download';
+    if (button.classList.contains('btn-toggle-types')) {
+        return button.getAttribute('aria-pressed') === 'true' ? 'toggleOn' : 'toggleOff';
+    }
+    if (button.id === 'btn-theme-toggle') {
+        return currentTheme === 'light' ? 'themeLight' : 'themeDark';
+    }
+    if (button.matches('.btn-settings, #btn-download-stats, #btn-mode-select')) return 'open';
+    if (button.id === 'language-menu-toggle') {
+        return button.getAttribute('aria-expanded') === 'true' ? 'open' : 'close';
+    }
+    if (button.classList.contains('btn-random-ratio')) return 'random';
+    if (button.id === 'btn-apply-city-data') return 'apply';
+    if (button.id === 'btn-reset-city') return 'rebuild';
+    if (button.matches('[data-select-mode], [data-language-button]')) return 'select';
+    if (button.matches('.close-btn, .download-cancel, #btn-close-type-guide')) return 'close';
+    return 'click';
+}
+
+document.addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button || button.disabled) return;
+    const effect = getButtonSound(button);
+    if (effect) window.AppSound.play(effect);
+});
+
+document.addEventListener('change', event => {
+    const control = event.target;
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement)) return;
+    if (control.id === 'enable-sounds') return;
+    if (control.matches('input[type="checkbox"]')) {
+        window.AppSound.play(control.checked ? 'toggleOn' : 'toggleOff');
+    } else if (control.matches('input[type="range"], input[type="number"]')) {
+        window.AppSound.play('adjust');
+    } else {
+        window.AppSound.play('select');
+    }
+});
+
+function setLanguageMenuOpen(isOpen) {
+    languageMenu.hidden = !isOpen;
+    languageMenuToggle.setAttribute('aria-expanded', String(isOpen));
+    languageControl.classList.toggle('is-open', isOpen);
+}
+
+languageMenuToggle.onclick = () => {
+    const isOpen = languageMenuToggle.getAttribute('aria-expanded') === 'true';
+    setLanguageMenuOpen(!isOpen);
+};
+
+languageButtons.forEach(button => {
+    button.onclick = () => {
+        window.AppI18n.setLanguage(button.dataset.languageButton);
+        setLanguageMenuOpen(false);
+        languageMenuToggle.focus();
+    };
+});
+
+document.addEventListener('click', event => {
+    if (!languageControl.contains(event.target)) setLanguageMenuOpen(false);
+});
+
+document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || languageMenu.hidden) return;
+    setLanguageMenuOpen(false);
+    languageMenuToggle.focus();
+});
+document.addEventListener('app-language-change', refreshLocalizedUI);
+window.AppSound.initialize();
+window.AppI18n.initialize();
 
 window.addEventListener('resize', () => {
     if (!simulationMode) return;
