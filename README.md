@@ -1,8 +1,30 @@
 # 도시 폐기물 통계 시뮬레이션
 
+<p align="center">
+  <strong>한국어</strong> ·
+  <a href="./README.en.md">English</a> ·
+  <a href="./README.ja.md">日本語</a> ·
+  <a href="./README.zh.md">中文</a>
+</p>
+
+<p align="center">
+  <a href="https://cora1022.com/Urban-Waste-Statistics-Simulation/">
+    <img src="./assets/readme-title-korean-v2.png" width="960" alt="도시 폐기물 통계 시뮬레이션">
+  </a>
+</p>
+
+<p align="center">
+  <strong>도시의 하루를 비교해보세요</strong><br>
+  건물 구성과 인구 조건에 따라 달라지는 도시 폐기물을 직접 만들고 비교합니다.
+</p>
+
+<p align="center">
+  <a href="https://cora1022.com/Urban-Waste-Statistics-Simulation/"><strong>시뮬레이션 시작 →</strong></a>
+</p>
+
 대한민국 생활폐기물 통계와 유사한 규모와 구성비의 합성 데이터를 생성하고, 서로 다른 도시 조건을 시각적으로 비교하는 웹 시뮬레이션입니다.
 
-- 시뮬레이션: [cora1022.github.io/Urban-Waste-Statistics-Simulation](https://cora1022.github.io/Urban-Waste-Statistics-Simulation/)
+- 시뮬레이션: [cora1022.com/Urban-Waste-Statistics-Simulation](https://cora1022.com/Urban-Waste-Statistics-Simulation/)
 
 ## 프로젝트 배경
 
