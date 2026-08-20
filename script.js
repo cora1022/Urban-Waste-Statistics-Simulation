@@ -669,6 +669,9 @@ class CitySimulation {
         this.totalWorkerPopulation = 0;
         this.totalVisitorPopulation = 0;
         this.isInitialized = false;
+        this.layoutWidth = 0;
+        this.layoutHeight = 0;
+        this.animationFrameId = null;
         
         this.config = {
             roadWidth: 46,
@@ -689,26 +692,57 @@ class CitySimulation {
 
     init() {
         if (this.isInitialized) return;
-        this.resize();
+        this.resize({ rebuild: true });
         this.isInitialized = true;
-        this.animate();
+        this.startAnimation();
     }
 
-    resize() {
+    resize({ rebuild = false } = {}) {
         const rect = this.container.getBoundingClientRect();
         const nextWidth = Math.round(rect.width);
         const nextHeight = Math.round(rect.height);
-        if (this.canvas.width === nextWidth && this.canvas.height === nextHeight && this.buildings.length > 0) {
+        if (nextWidth <= 0 || nextHeight <= 0) return false;
+        if (this.canvas.width === nextWidth && this.canvas.height === nextHeight && !rebuild) {
             return false;
         }
 
         this.canvas.width = nextWidth;
         this.canvas.height = nextHeight;
-        this.createCity();
+        if (rebuild || this.buildings.length === 0 || this.layoutWidth <= 0 || this.layoutHeight <= 0) {
+            this.layoutWidth = nextWidth;
+            this.layoutHeight = nextHeight;
+            this.createCity();
+        }
         return true;
     }
 
+    getRenderScale() {
+        return {
+            x: this.layoutWidth > 0 ? this.canvas.width / this.layoutWidth : 1,
+            y: this.layoutHeight > 0 ? this.canvas.height / this.layoutHeight : 1
+        };
+    }
+
+    shouldAnimate() {
+        if (!this.isInitialized || document.visibilityState === 'hidden') return false;
+        if (document.body.classList.contains('awaiting-mode')) return false;
+        return simulationMode === 'comparison' || (simulationMode === 'single' && this === cityLeft);
+    }
+
+    startAnimation() {
+        if (this.animationFrameId !== null || !this.shouldAnimate()) return;
+        this.animate();
+    }
+
+    stopAnimation() {
+        if (this.animationFrameId === null) return;
+        cancelAnimationFrame(this.animationFrameId);
+        this.animationFrameId = null;
+    }
+
     createCity() {
+        this.layoutWidth = this.canvas.width;
+        this.layoutHeight = this.canvas.height;
         this.buildings = [];
         this.roadPaths = [];
         this.vehicles = [];
@@ -1109,8 +1143,15 @@ class CitySimulation {
     }
 
     animate() {
+        this.animationFrameId = null;
+        if (!this.shouldAnimate()) return;
+
         this.ctx.fillStyle = COLORS.BG;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        const renderScale = this.getRenderScale();
+        this.ctx.save();
+        this.ctx.scale(renderScale.x, renderScale.y);
 
         this.drawRoadNetwork();
 
@@ -1123,8 +1164,9 @@ class CitySimulation {
         }
         this.vehicles = this.vehicles.filter(v => v.alive);
         this.vehicles.forEach(v => { v.update(); v.draw(this.ctx); });
+        this.ctx.restore();
 
-        requestAnimationFrame(() => this.animate());
+        this.animationFrameId = requestAnimationFrame(() => this.animate());
     }
 }
 
@@ -1150,7 +1192,7 @@ window.onload = () => {
 
 const tooltip = document.getElementById('tooltip');
 const modal = document.getElementById('settings-modal');
-const closeBtn = document.querySelector('.close-btn');
+const closeBtn = modal.querySelector('.close-btn');
 const downloadModal = document.getElementById('download-modal');
 const downloadForm = document.getElementById('download-form');
 const downloadButton = document.getElementById('btn-download-stats');
@@ -1198,6 +1240,7 @@ const languageButtons = document.querySelectorAll('[data-language-button]');
 let currentTheme = 'dark';
 let typeGuideDismissed = false;
 let downloadModalReturnFocus = null;
+let settingsModalReturnFocus = null;
 
 function getCityByKey(key) {
     return key === 'left' ? cityLeft : cityRight;
@@ -1205,6 +1248,16 @@ function getCityByKey(key) {
 
 function getActiveCities() {
     return simulationMode === 'single' ? [cityLeft] : [cityLeft, cityRight];
+}
+
+function syncCityAnimations() {
+    [cityLeft, cityRight].forEach(city => {
+        if (city.shouldAnimate()) {
+            city.startAnimation();
+        } else {
+            city.stopAnimation();
+        }
+    });
 }
 
 function getCityLabel(city) {
@@ -1232,7 +1285,7 @@ function updateModeSelectionUI() {
 }
 
 function openModeSelection() {
-    modal.style.display = 'none';
+    closeSettingsModal({ restoreFocus: false });
     closeDownloadModal();
     tooltip.style.display = 'none';
     entrySelectedMode = simulationMode || entrySelectedMode || 'comparison';
@@ -1240,6 +1293,7 @@ function openModeSelection() {
     document.body.classList.add('awaiting-mode');
     modeSelection.hidden = false;
     modeSelection.setAttribute('aria-hidden', 'false');
+    syncCityAnimations();
     window.requestAnimationFrame(() => modeSelection.focus({ preventScroll: true }));
 }
 
@@ -1263,9 +1317,10 @@ function selectSimulationMode(mode) {
             if (!city.isInitialized) {
                 city.init();
             } else if (modeChanged) {
-                city.resize();
+                city.resize({ rebuild: true });
             }
         });
+        syncCityAnimations();
         setDailyWasteGenerated(getActiveCities().every(city => city.totalCityWaste > 0));
         updateComparisonBar();
         generateAllButton.focus();
@@ -1479,7 +1534,7 @@ function updateScaleControlsFromConfig() {
     populationScaleRange.value = activeCity.config.populationScale;
     populationScaleNumber.value = activeCity.config.populationScale;
     wasteScaleRange.value = activeCity.config.wasteScale * 100;
-    trafficScaleRange.value = Math.round((activeCity.config.trafficScale || 1) * 100);
+    trafficScaleRange.value = Math.round((activeCity.config.trafficScale ?? 1) * 100);
     updateWasteScaleUI();
     updateTrafficEstimateUI();
 }
@@ -1601,6 +1656,7 @@ function applyCityDataToConfig() {
 
 document.querySelectorAll('.btn-settings').forEach(btn => {
     btn.onclick = (e) => {
+        settingsModalReturnFocus = e.currentTarget;
         const target = e.currentTarget.dataset.city;
         activeCity = (target === 'left') ? cityLeft : cityRight;
         
@@ -1618,13 +1674,28 @@ document.querySelectorAll('.btn-settings').forEach(btn => {
         updateRatioUI();
         updatePopulationEstimateUI();
         modal.style.display = 'block';
+        modal.setAttribute('aria-hidden', 'false');
+        window.requestAnimationFrame(() => closeBtn.focus());
     };
 });
 
-closeBtn.onclick = () => modal.style.display = 'none';
+function closeSettingsModal({ restoreFocus = true } = {}) {
+    const wasOpen = modal.style.display === 'block';
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    if (!wasOpen) return;
+
+    const returnFocus = settingsModalReturnFocus;
+    settingsModalReturnFocus = null;
+    if (restoreFocus) {
+        window.requestAnimationFrame(() => returnFocus?.focus());
+    }
+}
+
+closeBtn.onclick = () => closeSettingsModal();
 window.onclick = (e) => {
     if (e.target === modal && modal.style.display === 'block') {
-        modal.style.display = 'none';
+        closeSettingsModal();
         window.AppSound.play('close');
     }
     if (e.target === downloadModal && downloadModal.style.display === 'block') {
@@ -1704,7 +1775,7 @@ document.getElementById('btn-reset-city').onclick = () => {
     activeCity.totalWasteDisplay.innerText = '0';
     setDailyWasteGenerated(false);
     updateComparisonBar();
-    modal.style.display = 'none';
+    closeSettingsModal();
 };
 
 function openDownloadModal() {
@@ -1728,8 +1799,8 @@ function closeDownloadModal() {
     }
 }
 
-function trapDownloadModalFocus(event) {
-    const focusableElements = [...downloadModal.querySelectorAll(
+function trapModalFocus(event, dialog) {
+    const focusableElements = [...dialog.querySelectorAll(
         'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
     )].filter(element => element.getClientRects().length > 0);
     if (focusableElements.length === 0) return;
@@ -1738,10 +1809,10 @@ function trapDownloadModalFocus(event) {
     const lastElement = focusableElements[focusableElements.length - 1];
     const activeElement = document.activeElement;
 
-    if (event.shiftKey && (activeElement === firstElement || !downloadModal.contains(activeElement))) {
+    if (event.shiftKey && (activeElement === firstElement || !dialog.contains(activeElement))) {
         event.preventDefault();
         lastElement.focus();
-    } else if (!event.shiftKey && (activeElement === lastElement || !downloadModal.contains(activeElement))) {
+    } else if (!event.shiftKey && (activeElement === lastElement || !dialog.contains(activeElement))) {
         event.preventDefault();
         firstElement.focus();
     }
@@ -1861,13 +1932,18 @@ document.addEventListener('keydown', (event) => {
             event.preventDefault();
             closeDownloadModal();
         } else if (event.key === 'Tab') {
-            trapDownloadModalFocus(event);
+            trapModalFocus(event, downloadModal);
         }
         return;
     }
 
-    if (event.key === 'Escape' && modal.style.display === 'block') {
-        modal.style.display = 'none';
+    if (modal.style.display === 'block') {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeSettingsModal();
+        } else if (event.key === 'Tab') {
+            trapModalFocus(event, modal);
+        }
     }
 });
 
@@ -1886,8 +1962,9 @@ function hideTooltip() {
 
 function findBuildingAt(city, clientX, clientY) {
     const rect = city.canvas.getBoundingClientRect();
-    const mx = clientX - rect.left;
-    const my = clientY - rect.top;
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const mx = (clientX - rect.left) * (city.layoutWidth / rect.width);
+    const my = (clientY - rect.top) * (city.layoutHeight / rect.height);
 
     return city.buildings.find(b => (
         mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h
@@ -2098,12 +2175,7 @@ window.AppI18n.initialize();
 
 window.addEventListener('resize', () => {
     if (!simulationMode) return;
-    let cityWasRebuilt = false;
-    getActiveCities().forEach(city => {
-        if (city.resize()) {
-            resetCityWaste(city);
-            cityWasRebuilt = true;
-        }
-    });
-    if (cityWasRebuilt) updateComparisonBar();
+    getActiveCities().forEach(city => city.resize());
 });
+
+document.addEventListener('visibilitychange', syncCityAnimations);
